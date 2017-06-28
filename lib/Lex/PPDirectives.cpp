@@ -12,9 +12,6 @@
 ///
 //===----------------------------------------------------------------------===//
 
-//Lines 2636 to 2643 has a block inserted that outputs a message whenever there is an #ifdef
-//including information on the line number, the source file name, and the macro being checked.
-
 #include "clang/Basic/CharInfo.h"
 #include "clang/Basic/FileManager.h"
 #include "clang/Basic/IdentifierTable.h"
@@ -2632,15 +2629,6 @@ void Preprocessor::HandleIfdefDirective(Token &Result, bool isIfndef,
   IdentifierInfo *MII = MacroNameTok.getIdentifierInfo();
   auto MD = getMacroDefinition(MII);
   MacroInfo *MI = MD.getMacroInfo();
-
-  //modification begin
-  if (!isIfndef){
-    llvm::outs() <<"Found #ifdef directive at line " << 
-    /*line number*/getSourceManager().getSpellingLineNumber(DirectiveTok.getLocation()) << 
-    " checking if the macro " << /*macro name*/ MII->getName()  << " is defined in file " <<
-    /*file name*/getSourceManager().getFilename(DirectiveTok.getLocation()) << "\n";
-  }
-  //modification end
 
   if (CurPPLexer->getConditionalStackDepth() == 0) {
     // If the start of a top-level #ifdef and if the macro is not defined,
