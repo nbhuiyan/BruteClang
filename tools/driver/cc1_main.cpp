@@ -13,6 +13,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+//multiple compiler instances can now be set up using a file name var.config in the directory of the clang executable. can assign include paths and macro defs to individual compiler instance using the config file.
+//TODO: output the errors from a compiler plugin in a report format.
+
 #include "llvm/Option/Arg.h"
 #include "clang/CodeGen/ObjectFilePCHContainerOperations.h"
 #include "clang/Config/config.h"
@@ -37,6 +40,7 @@
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cstdio>
+#include <fstream>
 
 #ifdef CLANG_HAVE_RLIMITS
 #include <sys/resource.h>
@@ -169,7 +173,9 @@ static void ensureSufficientStack() {}
 
 int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
   ensureSufficientStack();
-
+  std::ifstream config;
+  config.open("var.config");
+  if (!config){
   std::unique_ptr<CompilerInstance> Clang(new CompilerInstance());
   IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
 
@@ -236,4 +242,91 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
   }
 
   return !Success;
+  }
+  else{
+    llvm::InitializeAllTargets();
+    llvm::InitializeAllTargetMCs();
+    llvm::InitializeAllAsmPrinters();
+    llvm::InitializeAllAsmParsers();
+    std::string str; //string buffer
+    config >> str; // starting things off
+    frontend::IncludeDirGroup Group = frontend::Angled;
+    while (1){
+      if (str.back() == ':'){
+        std::unique_ptr<CompilerInstance> Clang(new CompilerInstance());
+        IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
+
+    // Register the support for object-file-wrapped Clang modules.
+    auto PCHOps = Clang->getPCHContainerOperations();
+    PCHOps->registerWriter(llvm::make_unique<ObjectFilePCHContainerWriter>());
+    PCHOps->registerReader(llvm::make_unique<ObjectFilePCHContainerReader>());
+
+  // Buffer diagnostics from argument parsing so that we can output them using a
+  // well formed diagnostic object.
+    IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts = new DiagnosticOptions();
+    TextDiagnosticBuffer *DiagsBuffer = new TextDiagnosticBuffer;
+    DiagnosticsEngine Diags(DiagID, &*DiagOpts, DiagsBuffer);
+    bool Success = CompilerInvocation::CreateFromArgs(
+      Clang->getInvocation(), Argv.begin(), Argv.end(), Diags);
+
+  // Infer the builtin include path if unspecified.
+    if (Clang->getHeaderSearchOpts().UseBuiltinIncludes &&
+        Clang->getHeaderSearchOpts().ResourceDir.empty())
+        Clang->getHeaderSearchOpts().ResourceDir =
+      CompilerInvocation::GetResourcesPath(Argv0, MainAddr);
+
+    while (1){
+      config >> str;
+      if ((str.back() == ':')){
+        break;
+      }
+      if(str.front() == '-'){
+        str.erase(str.begin()); //remove '-'
+        if (str.front() == 'I'){ //handle includes
+          str.pop_back(); //remove single quote ['] at the back
+          str.erase(str.begin(), str.begin()+2); //remove I and single quote [']
+          Clang->getHeaderSearchOpts().AddPath(str, Group, false, true);
+        }
+        else if(str.front() == 'D'){ //handle macrodefs
+          str.erase(str.begin()); //remove D
+          CompilerInvocation::AssignMacroDef(Clang->getInvocation() , llvm::StringRef(str));
+        } 
+      }
+      if (config.eof()){
+        break;
+      }
+    }
+    // Create the actual diagnostics engine.
+    Clang->createDiagnostics();
+    if (!Clang->hasDiagnostics())
+     return 1;
+
+    // Set an error handler, so that any LLVM backend diagnostics go through our
+    // error handler.
+    llvm::install_fatal_error_handler(LLVMErrorHandler,
+                                  static_cast<void*>(&Clang->getDiagnostics()));
+
+    DiagsBuffer->FlushDiagnostics(Clang->getDiagnostics());
+    if (!Success)
+      return 1;
+
+  // Execute the frontend actions.
+    Success = ExecuteCompilerInvocation(Clang.get());
+
+  // If any timers were active but haven't been destroyed yet, print their
+  // results now.  This happens in -disable-free mode.
+    llvm::TimerGroup::printAll(llvm::errs());
+
+  // Our error handler depends on the Diagnostics object, which we're
+  // potentially about to delete. Uninstall the handler now so that any
+  // later errors use the default handling behavior instead.
+    llvm::remove_fatal_error_handler();
+
+      }
+    if (config.eof()){
+      break;
+    }
+    }
+    return 0;
+ }
 }

@@ -7,6 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+//added new public member function AssignMacroDef() to be able to assign macro defs from within cc1_main()
+
 #ifndef LLVM_CLANG_FRONTEND_COMPILERINVOCATION_H_
 #define LLVM_CLANG_FRONTEND_COMPILERINVOCATION_H_
 
@@ -145,7 +147,8 @@ public:
                              const char* const *ArgBegin,
                              const char* const *ArgEnd,
                              DiagnosticsEngine &Diags);
-
+  //function declaration to assign macro def to compiler invocation
+  static void AssignMacroDef(CompilerInvocation &CI, llvm::StringRef str);
   /// \brief Get the directory where the compiler headers
   /// reside, relative to the compiler binary (found by the passed in
   /// arguments).
