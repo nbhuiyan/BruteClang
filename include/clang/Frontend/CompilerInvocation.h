@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-//added new public member function AssignMacroDef() to be able to assign macro defs from within cc1_main()
-
 #ifndef LLVM_CLANG_FRONTEND_COMPILERINVOCATION_H_
 #define LLVM_CLANG_FRONTEND_COMPILERINVOCATION_H_
 

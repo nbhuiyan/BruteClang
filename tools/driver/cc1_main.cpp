@@ -13,9 +13,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-//multiple compiler instances can now be set up using a file name var.config in the directory of the clang executable. can assign include paths and macro defs to individual compiler instance using the config file.
-//TODO: output the errors from a compiler plugin in a report format.
-
 #include "llvm/Option/Arg.h"
 #include "clang/CodeGen/ObjectFilePCHContainerOperations.h"
 #include "clang/Config/config.h"
@@ -41,6 +38,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include <cstdio>
 #include <fstream>
+#include <list>
 
 #ifdef CLANG_HAVE_RLIMITS
 #include <sys/resource.h>
@@ -248,11 +246,16 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
     llvm::InitializeAllTargetMCs();
     llvm::InitializeAllAsmPrinters();
     llvm::InitializeAllAsmParsers();
-    std::string str; //string buffer
+    std::list<std::string> good_CI; //list of bad compiler instances
+    std::list<std::string> bad_CI; //list of good compiler instances
+    std::string str; //string buffer to store input from config file
+    std::string current_CI;
     config >> str; // starting things off
     frontend::IncludeDirGroup Group = frontend::Angled;
     while (1){
       if (str.back() == ':'){
+        current_CI = str;
+        current_CI.pop_back();
         std::unique_ptr<CompilerInstance> Clang(new CompilerInstance());
         IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
 
@@ -316,6 +319,13 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
   // If any timers were active but haven't been destroyed yet, print their
   // results now.  This happens in -disable-free mode.
     llvm::TimerGroup::printAll(llvm::errs());
+    
+    if (Clang->getDiagnosticClient().getNumErrors() > 0){
+      bad_CI.push_back(current_CI);
+    }
+    else{
+      good_CI.push_back(current_CI);
+    }
 
   // Our error handler depends on the Diagnostics object, which we're
   // potentially about to delete. Uninstall the handler now so that any
@@ -327,6 +337,38 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
       break;
     }
     }
+
+    if (bad_CI.empty()){
+      llvm::outs() << "All tests passed!\n";
+    }
+    else{
+      if (good_CI.empty()){
+        llvm::outs() << "Warning: All tests failed!";
+      }
+      else{
+        llvm::outs() << "Warning: some tests failed!\n";
+        llvm::outs() << "Errors reported in the following compiler instance(s):\n";
+        if (bad_CI.size() == 1){
+          llvm::outs() << bad_CI.front() << "\n";
+        }
+        else{
+          for (std::list<std::string>::iterator it = bad_CI.begin(); it != bad_CI.end(); it++){
+            llvm::outs() << *it << "\n";
+          }
+        }
+
+        llvm::outs() << "No errors were reported in the following compiler instance(s):\n";
+        if (good_CI.size() == 1){
+          llvm::outs() << good_CI.front() << "\n";
+        }
+        else{
+          for (std::list<std::string>::iterator it = good_CI.begin(); it != good_CI.end(); it++){
+            llvm::outs() << *it << "\n";
+          }
+        }
+      }
+    }
+
     return 0;
  }
 }

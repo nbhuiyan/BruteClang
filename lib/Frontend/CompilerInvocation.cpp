@@ -7,8 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-//defined AssignMacroDef()
-
 #include "clang/Frontend/CompilerInvocation.h"
 #include "TestModuleFileExtension.h"
 #include "clang/Basic/Builtins.h"
