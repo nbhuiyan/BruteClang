@@ -678,7 +678,7 @@ bool DiagnosticIDs::ProcessDiag(DiagnosticsEngine &Diag) const {
 void DiagnosticIDs::EmitDiag(DiagnosticsEngine &Diag, Level DiagLevel) const {
   Diagnostic Info(&Diag);
   assert(DiagLevel != DiagnosticIDs::Ignored && "Cannot emit ignored diagnostics!");
-  llvm::outs() << "currently in DiagnosticIDs::EmitDiag\n";
+  llvm::outs() << "currently in DiagnosticIDs::EmitDiag. About to call HandleDiagnostic\n";
 
   Diag.Client->HandleDiagnostic((DiagnosticsEngine::Level)DiagLevel, Info);
   if (Diag.Client->IncludeInDiagnosticCounts()) {

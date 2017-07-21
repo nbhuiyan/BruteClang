@@ -252,12 +252,16 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
     std::string current_CI;
     config >> str; // starting things off
     frontend::IncludeDirGroup Group = frontend::Angled;
+    //setting up diagnostic engine outside the while loop to use the same diagnostic engine
+    IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
+    IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts = new DiagnosticOptions();
+    TextDiagnosticBuffer *DiagsBuffer = new TextDiagnosticBuffer;
+    DiagnosticsEngine Diags(DiagID, &*DiagOpts, DiagsBuffer);
     while (1){
       if (str.back() == ':'){
         current_CI = str;
         current_CI.pop_back();
         std::unique_ptr<CompilerInstance> Clang(new CompilerInstance());
-        IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
 
     // Register the support for object-file-wrapped Clang modules.
     auto PCHOps = Clang->getPCHContainerOperations();
@@ -266,9 +270,6 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
 
   // Buffer diagnostics from argument parsing so that we can output them using a
   // well formed diagnostic object.
-    IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts = new DiagnosticOptions();
-    TextDiagnosticBuffer *DiagsBuffer = new TextDiagnosticBuffer;
-    DiagnosticsEngine Diags(DiagID, &*DiagOpts, DiagsBuffer);
     bool Success = CompilerInvocation::CreateFromArgs(
       Clang->getInvocation(), Argv.begin(), Argv.end(), Diags);
 
@@ -309,16 +310,15 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
     llvm::install_fatal_error_handler(LLVMErrorHandler,
                                   static_cast<void*>(&Clang->getDiagnostics()));
 
-    DiagsBuffer->FlushDiagnostics(Clang->getDiagnostics());
+    /*DiagsBuffer->FlushDiagnostics(Clang->getDiagnostics());
     if (!Success)
-      return 1;
-
+      return 1;*/
   // Execute the frontend actions.
+  Clang->getDiagnostics().setClient(new CustomDiagConsumer(), true);
     Success = ExecuteCompilerInvocation(Clang.get());
 
   // If any timers were active but haven't been destroyed yet, print their
   // results now.  This happens in -disable-free mode.
-    llvm::TimerGroup::printAll(llvm::errs());
     
     if (Clang->getDiagnosticClient().getNumErrors() > 0){
       bad_CI.push_back(current_CI);
@@ -326,6 +326,8 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
     else{
       good_CI.push_back(current_CI);
     }
+
+    llvm::outs() << "attempting to get DiagID from within cc1_main(): DiagID" << Clang->getDiagnostics().extractCurrentDiagID() << "\n";
 
   // Our error handler depends on the Diagnostics object, which we're
   // potentially about to delete. Uninstall the handler now so that any
@@ -339,11 +341,11 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
     }
 
     if (bad_CI.empty()){
-      llvm::outs() << "All tests passed!\n";
+      llvm::outs() << "No Compiler Instances reported any errors!\n";
     }
     else{
       if (good_CI.empty()){
-        llvm::outs() << "Warning: All tests failed!";
+        llvm::outs() << "Warning: All Compiler Instances reported erros!";
       }
       else{
         llvm::outs() << "Warning: some tests failed!\n";
@@ -369,6 +371,6 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
       }
     }
 
-    return 0;
+    return !Success;
  }
 }

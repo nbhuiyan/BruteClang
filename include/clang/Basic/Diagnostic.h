@@ -901,6 +901,9 @@ protected:
 
   friend class ASTReader;
   friend class ASTWriter;
+
+public:
+  unsigned extractCurrentDiagID() const { return CurDiagID; }
 };
 
 /// \brief RAII class that determines when any errors have occurred
@@ -912,6 +915,8 @@ class DiagnosticErrorTrap {
   unsigned NumUnrecoverableErrors;
 
 public:
+
+ 
   explicit DiagnosticErrorTrap(DiagnosticsEngine &Diag)
     : Diag(Diag) { reset(); }
 
@@ -1457,6 +1462,12 @@ class IgnoringDiagConsumer : public DiagnosticConsumer {
   }
 };
 
+
+class CustomDiagConsumer : public DiagnosticConsumer {
+  virtual void anchor();
+
+  void HandleDiagnostic(DiagnosticsEngine::Level DiagLevel, const Diagnostic &Info);
+};
 /// \brief Diagnostic consumer that forwards diagnostics along to an
 /// existing, already-initialized diagnostic consumer.
 ///

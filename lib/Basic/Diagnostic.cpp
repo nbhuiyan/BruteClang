@@ -387,6 +387,7 @@ void DiagnosticsEngine::Report(const StoredDiagnostic &storedDiag) {
   assert(Client && "DiagnosticConsumer not set!");
   Level DiagLevel = storedDiag.getLevel();
   Diagnostic Info(this, storedDiag.getMessage());
+  llvm::outs() << "printing out the message in DiagnosticsEngine::Report in Diagnostic.cpp" << std::string(storedDiag.getMessage()) << "\n";
   Client->HandleDiagnostic(DiagLevel, Info);
   if (Client->IncludeInDiagnosticCounts()) {
     if (DiagLevel == DiagnosticsEngine::Warning)
@@ -410,6 +411,7 @@ bool DiagnosticsEngine::EmitCurrentDiagnostic(bool Force) {
     Emitted = (DiagLevel != DiagnosticIDs::Ignored);
     if (Emitted) {
       // Emit the diagnostic regardless of suppression level.
+      llvm::outs() << "about to call DiagnosticIDs::EmitDiag() from DiagnosticsEngine::EmitCurrentDiagnostic()\n";
       Diags->EmitDiag(*this, DiagLevel);
     }
   } else {
@@ -441,6 +443,8 @@ void DiagnosticConsumer::HandleDiagnostic(DiagnosticsEngine::Level DiagLevel,
   else if (DiagLevel >= DiagnosticsEngine::Error)
     ++NumErrors;
 }
+
+
 
 /// ModifierIs - Return true if the specified modifier matches specified string.
 template <std::size_t StrLen>
@@ -1019,6 +1023,18 @@ StoredDiagnostic::StoredDiagnostic(DiagnosticsEngine::Level Level, unsigned ID,
 bool DiagnosticConsumer::IncludeInDiagnosticCounts() const { return true; }
 
 void IgnoringDiagConsumer::anchor() { }
+
+void CustomDiagConsumer::anchor() { }
+
+void CustomDiagConsumer::HandleDiagnostic(DiagnosticsEngine::Level DiagLevel, const Diagnostic &Info){
+  
+  if (DiagLevel == DiagnosticsEngine::Warning)
+    ++NumWarnings;
+  else if (DiagLevel >= DiagnosticsEngine::Error)
+    ++NumErrors;
+
+  llvm::outs() << "now in the custom diagconsumer i created\n";
+}
 
 ForwardingDiagnosticConsumer::~ForwardingDiagnosticConsumer() {}
 
