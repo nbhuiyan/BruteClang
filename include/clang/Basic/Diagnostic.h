@@ -1461,12 +1461,35 @@ class IgnoringDiagConsumer : public DiagnosticConsumer {
     // Just ignore it.
   }
 };
+// ------ Diagnostic Contanier for OMRChecker
+class CustomDiagnosticContainer{
+    struct data{
+      std::string CI_Name;
+      DiagnosticsEngine::Level DiagLevel;
+      Diagnostic &Info;
+    };
+
+    std::list diaglist;
+
+  public:
+
+  void AddDiagnostic()
 
 
+};
+
+
+// ------ custom diagnostic consumer for OMRChecker
 class CustomDiagConsumer : public DiagnosticConsumer {
   virtual void anchor();
 
   void HandleDiagnostic(DiagnosticsEngine::Level DiagLevel, const Diagnostic &Info);
+
+  private:
+  
+
+  public:
+    AssignCompilerInstance(std::string CI_Name);
 };
 /// \brief Diagnostic consumer that forwards diagnostics along to an
 /// existing, already-initialized diagnostic consumer.
