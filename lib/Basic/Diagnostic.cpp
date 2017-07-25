@@ -1033,8 +1033,28 @@ void CustomDiagConsumer::HandleDiagnostic(DiagnosticsEngine::Level DiagLevel, co
   else if (DiagLevel >= DiagnosticsEngine::Error)
     ++NumErrors;
 
-  llvm::outs() << "now in the custom diagconsumer i created\n";
+  llvm::SmallVector<char, 128> message;
+  Info.FormatDiagnostic(message);
+
+  llvm::errs() << "In line " << Info.getSourceManager().getSpellingLineNumber(Info.getLocation()) 
+  << " of file "<<Info.getSourceManager().getFilename(Info.getLocation()) << std::string(message.begin(), message.end()) << "\n";
 }
+
+/*void CustomDiagContainer::NewStructNeeded(){
+  return;
+}
+
+void CustomDiagContainer::AddToExistingStruct(){
+  return;
+}
+
+void CustomDiagContainer::AssignCompilerInstance(std::string CI_Name){
+  return;
+}
+
+void CustomDiagContainer::AddDiagnostic(DiagnosticsEngine::Level DiagLevel, const Diagnostic &Info){
+  return;
+}*/
 
 ForwardingDiagnosticConsumer::~ForwardingDiagnosticConsumer() {}
 
