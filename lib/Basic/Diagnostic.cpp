@@ -1040,7 +1040,14 @@ void CustomDiagConsumer::HandleDiagnostic(DiagnosticsEngine::Level DiagLevel, co
   << " of file "<<Info.getSourceManager().getFilename(Info.getLocation()) << std::string(message.begin(), message.end()) << "\n";
 }
 
-/*void CustomDiagContainer::NewStructNeeded(){
+bool CustomDiagContainer::AlreadyExists(unsigned line, std::string &message){
+  for (std::list<DiagData*>::iterator it = DiagList.begin(); it != DiagList.end(); it++){
+    if(*it->)
+  }
+  return false;
+}
+
+void CustomDiagContainer::AddNewStruct(){
   return;
 }
 
@@ -1054,7 +1061,7 @@ void CustomDiagContainer::AssignCompilerInstance(std::string CI_Name){
 
 void CustomDiagContainer::AddDiagnostic(DiagnosticsEngine::Level DiagLevel, const Diagnostic &Info){
   return;
-}*/
+}
 
 ForwardingDiagnosticConsumer::~ForwardingDiagnosticConsumer() {}
 

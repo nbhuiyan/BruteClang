@@ -45,6 +45,9 @@ class IdentifierInfo;
 class LangOptions;
 class Preprocessor;
 class StoredDiagnostic;
+//the 2 classes added for use with the OMRChecker bruteforce checker.
+class CustomDiagContainer;
+class CustomDiagConsumer;
 
 namespace tok {
 
@@ -1462,19 +1465,25 @@ class IgnoringDiagConsumer : public DiagnosticConsumer {
   }
 };
 // ------ Custom Diagnostic Contanier for OMRChecker
-/*class CustomDiagContainer{
-    struct data{
-      std::list<std::string> CI_Name;
-      llvm::SmallVector<char, 256> msg;
-      clang::SourceLocation Loc;
-      clag::SourceManager SM;
-    };
+class CustomDiagContainer{
+    typedef struct DiagData{
+      std::list<std::string> CI_Names;
+      std::string msg;
+      std::string FileName;
+      unsigned LineNumber;
+    } DiagData;
   private:
+  std::string CompilerInstanceName;
+  std::list<DiagData*> DiagList;
+  
+  //this function checks if the line number and diag message combination already exists
+  bool AlreadyExists(unsigned line, std::string &message);
 
-  std::list<struct data> diaglist;
+  //if a diagnostic message and line number combination does not already exist, create a new one.
+  void AddNewStruct(std::string &msg, std::string &FileName, unsigned LineNumber);
 
-  void NewStruct();
-  void AddToExistingStruct();
+  //if a diagnostic message and line number combination exists, then add to the existing corresponding struct.
+  void AddToExistingStruct(std::list<DiagData*>::iterator &it, std::string &msg, std::string &FileName, unsigned LineNumber);
 
 
   public:
@@ -1486,7 +1495,7 @@ class IgnoringDiagConsumer : public DiagnosticConsumer {
   
   //from cc1-main, this will be used for handling 
   void PrintDiagnostics();
-};*/
+};
 
 
 // ------ custom diagnostic consumer for OMRChecker

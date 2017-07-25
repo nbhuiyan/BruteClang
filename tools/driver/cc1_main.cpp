@@ -329,7 +329,6 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
       good_CI.push_back(current_CI);
     }
 
-    llvm::outs() << "attempting to get DiagID from within cc1_main(): DiagID" << Clang->getDiagnostics().extractCurrentDiagID() << "\n";
 
   // Our error handler depends on the Diagnostics object, which we're
   // potentially about to delete. Uninstall the handler now so that any
