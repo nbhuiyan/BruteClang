@@ -1042,9 +1042,11 @@ void CustomDiagConsumer::HandleDiagnostic(DiagnosticsEngine::Level DiagLevel, co
 
 bool CustomDiagContainer::AlreadyExists(unsigned line, std::string &message){
   for (std::list<DiagData*>::iterator it = DiagList.begin(); it != DiagList.end(); it++){
-    if(*it->)
+    if(((*it).msg == message)&&((*it).LineNumber == line){
+      return true; //return true if any of the structs match line number and message
+    }
   }
-  return false;
+  return false; //if for loop did not return true, then return false.
 }
 
 void CustomDiagContainer::AddNewStruct(){
