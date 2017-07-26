@@ -1477,13 +1477,13 @@ class CustomDiagContainer{
   std::list<DiagData> DiagList;
   
   //this function checks if the line number and diag message combination already exists
-  bool AlreadyExists(unsigned line, std::string &message);
+  bool AlreadyExists(std::string &message, unsigned line);
 
   //if a diagnostic message and line number combination does not already exist, create a new one.
   void AddNewStruct(std::string &msg, std::string &FileName, unsigned LineNumber);
 
   //if a diagnostic message and line number combination exists, then add to the existing corresponding struct.
-  void AddToExistingStruct(std::list<DiagData>::iterator &it, std::string &msg, std::string &FileName, unsigned LineNumber);
+  void AddToExistingStruct(std::string &message, unsigned line);
 
 
   public:
@@ -1501,8 +1501,12 @@ class CustomDiagContainer{
 // ------ custom diagnostic consumer for OMRChecker
 class CustomDiagConsumer : public DiagnosticConsumer {
   virtual void anchor();
+  DiagnosticContainer DiagContainer;
 
   void HandleDiagnostic(DiagnosticsEngine::Level DiagLevel, const Diagnostic &Info);
+
+  public:
+  void setContainer(CustomDiagContainer &Container);
 };
 /// \brief Diagnostic consumer that forwards diagnostics along to an
 /// existing, already-initialized diagnostic consumer.

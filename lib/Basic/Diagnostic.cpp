@@ -1026,6 +1026,10 @@ void IgnoringDiagConsumer::anchor() { }
 
 void CustomDiagConsumer::anchor() { }
 
+void CustomDiagConsumer::setContainer(CustomDiagContainer &Container){
+    DiagContainer = Container;
+}
+
 void CustomDiagConsumer::HandleDiagnostic(DiagnosticsEngine::Level DiagLevel, const Diagnostic &Info){
   
   if (DiagLevel == DiagnosticsEngine::Warning)
@@ -1033,14 +1037,12 @@ void CustomDiagConsumer::HandleDiagnostic(DiagnosticsEngine::Level DiagLevel, co
   else if (DiagLevel >= DiagnosticsEngine::Error)
     ++NumErrors;
 
-  llvm::SmallVector<char, 128> message;
-  Info.FormatDiagnostic(message);
+    DiagContainer.AddDiagnostic(DiagnosticEngine::Level DiagLevel, const Diagnostic &Info);
 
-  llvm::errs() << "In line " << Info.getSourceManager().getSpellingLineNumber(Info.getLocation()) 
-  << " of file "<<Info.getSourceManager().getFilename(Info.getLocation()) << std::string(message.begin(), message.end()) << "\n";
 }
 
-bool CustomDiagContainer::AlreadyExists(unsigned line, std::string &message){
+
+bool CustomDiagContainer::AlreadyExists(std::string &message, unsigned line){
   if (DiagList.size() == 1){
     if ((DiagList.begin()->msg == message)&&(DiagList.begin()->LineNumber == line)){
       return true
@@ -1056,7 +1058,7 @@ bool CustomDiagContainer::AlreadyExists(unsigned line, std::string &message){
 
 void CustomDiagContainer::AddNewStruct(std::string &msg, std::string &FileName, unsigned LineNumber){
   DiagData DD;
-  DD.CI_Names.add_back(CompilerInstanceName);
+  DD.CI_Names.push_back(CompilerInstanceName);
   DD.msg = msg;
   DD.FileName = FileName;
   DD.LineNumber = LineNumber;
@@ -1064,9 +1066,17 @@ void CustomDiagContainer::AddNewStruct(std::string &msg, std::string &FileName, 
   return;
 }
 
-void CustomDiagContainer::AddToExistingStruct(std::list<DiagData>::iterator &it){
-  it->CI_Names.push_back(CompilerInstanceName);
-  return;
+void CustomDiagContainer::AddToExistingStruct(std::string &message, unsigned line){
+  if (DiagList.size() == 1){
+    DiagList.begin()->CI_Names.push_back(CompilerInstanceName);
+  }
+  else{
+    for (std::list<DiagData>::iterator it = DiagList.begin(); it != DiagList.end(); it++){
+      if((it->msg == message)&&(it->LineNumber == line)){
+        it->CI_Names.push_back(CompilerInstanceName);
+      }
+    }
+  }
 }
 
 void CustomDiagContainer::SetCompilerInstanceName(std::string &CI_Name){
@@ -1075,25 +1085,54 @@ void CustomDiagContainer::SetCompilerInstanceName(std::string &CI_Name){
 }
 
 void CustomDiagContainer::AddDiagnostic(DiagnosticsEngine::Level DiagLevel, const Diagnostic &Info){
+  //extract all data from the Diagnostic object
+  llvm::SmallVector<char, 256> message_SmallVector; //creating a llvm::SmallVector character buffer
+  Info.FormatDiagnostic(message_SmallVector); //format the diagnostic message into the message buffer
+  std::string message(message_SmallVector.begin(), message_SmallVector.end()); //convert the llvm::SmallVector buffer to a std::string obj
+  
+  unsigned LineNumber = Info.getSourceManager().getSpellingLineNumber(Info.getLocation()); //line number
+  
+  llvm::StringRef FileName_StringRef = Info.getSourceManager().getFileName(Info.getLocation());
+  std::string FileName(FileName_StringRef.begin(), FileName_StringRef.end()); //file name as std::string
+
   //check if already exists in 2 ways:
   //if diaglist is empty, then does not exist. create new struct
   if (DiagList.empty()){
-    llvm::SmallVector<char, 256> message;
-    Info.FormatDiagnostic(message);
-    AddNewStruct(std::string(message.begin(), message.end()), Info.getSourceManager().getFilename(Info.getLocation()),
-    Info.getSourceManager().getSpellingLineNumber(Info.getLocation()));
+    AddNewStruct(message, FileName, LineNumber);
   }
   //if diaglist is not empty, use AlreadyExists to check if already exists
   else{
-    
-
+    if(!(AlreadyExists(LineNumber, message))){
+      //does not already exist, so add new struct
+      AddNewStruct(message, FileName, LineNumber);
+    }
+    else{
+      AddToExistingStruct(LineNumber, message);
+    }
   }
-  
-  return;
 }
 
-void CustomDiagContainer::PrintDiagnostics(){
-  return;
+void CustomDiagContainer::PrintDiagnostics(){ //TODO: Multiple structs case not handled yet
+  unsigned NumStructs = DiagList.size();
+  if (NumStructs == 0){
+    llvm::outs() << "No compiler instance reported any errors!\n";
+  }
+  else if(NumStructs == 1){
+    llvm::errs() << "The following compiler instance(s): ";
+    std::list<std::string> CI_Names = DiagList.begin()->CI_Names();
+    if (CI_Names.size() == 1){
+      llvm::errs() << CI_Names.begin() <<"\n";
+    }
+    else{
+      for (std::list<std::string>::iterator it = CI_Names.begin(); it != CI_Names.end(); it++){
+        llvm::errs() << *it << " ";
+      }
+      llvm::errs() << "\n"
+    }
+    llvm::errs() << "issued this error:\n";
+    llvm::errs() << "In line " << DiagList.begin()->LineNumber << " of file " <<
+    DiagList.begin()->FileName() << " :" << DiagList.begin()->msg << "\n";
+  }
 }
 
 ForwardingDiagnosticConsumer::~ForwardingDiagnosticConsumer() {}

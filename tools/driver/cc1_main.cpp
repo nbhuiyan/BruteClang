@@ -253,10 +253,14 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
     config >> str; // starting things off
     frontend::IncludeDirGroup Group = frontend::Angled;
 
+    //custom diagnostic container
+    clang::CustomDiagContainer CustomContainer;
+
     
     while (1){
       if (str.back() == ':'){
         current_CI = str;
+        CustomContainer.SetCompilerInstanceName(Current_CI);
         current_CI.pop_back();
         std::unique_ptr<CompilerInstance> Clang(new CompilerInstance());
         IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
@@ -316,6 +320,7 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
       return 1;
  //setting up the diagnostic client to our custom one.
   Clang->getDiagnostics().setClient(new CustomDiagConsumer(), true);
+  Clang->getDiagnostics().getClient().setContainer(CustomContainer);
    // Execute the frontend actions.
     Success = ExecuteCompilerInvocation(Clang.get());
 
@@ -340,7 +345,7 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
       break;
     }
     }
-
+    CustomContainer.PrintDiagnostics();
     if (bad_CI.empty()){
       llvm::outs() << "No Compiler Instances reported any errors!\n";
     }
