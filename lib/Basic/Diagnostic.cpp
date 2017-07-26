@@ -1041,27 +1041,58 @@ void CustomDiagConsumer::HandleDiagnostic(DiagnosticsEngine::Level DiagLevel, co
 }
 
 bool CustomDiagContainer::AlreadyExists(unsigned line, std::string &message){
-  for (std::list<DiagData*>::iterator it = DiagList.begin(); it != DiagList.end(); it++){
-    if(((*it).msg == message)&&((*it).LineNumber == line){
+  if (DiagList.size() == 1){
+    if ((DiagList.begin()->msg == message)&&(DiagList.begin()->LineNumber == line)){
+      return true
+    }
+  }
+  for (std::list<DiagData>::iterator it = DiagList.begin(); it != DiagList.end(); it++){
+    if((it->msg == message)&&(it->LineNumber == line)){
       return true; //return true if any of the structs match line number and message
     }
   }
   return false; //if for loop did not return true, then return false.
 }
 
-void CustomDiagContainer::AddNewStruct(){
+void CustomDiagContainer::AddNewStruct(std::string &msg, std::string &FileName, unsigned LineNumber){
+  DiagData DD;
+  DD.CI_Names.add_back(CompilerInstanceName);
+  DD.msg = msg;
+  DD.FileName = FileName;
+  DD.LineNumber = LineNumber;
+  DiagList.push_back(DD);
   return;
 }
 
-void CustomDiagContainer::AddToExistingStruct(){
+void CustomDiagContainer::AddToExistingStruct(std::list<DiagData>::iterator &it){
+  it->CI_Names.push_back(CompilerInstanceName);
   return;
 }
 
-void CustomDiagContainer::AssignCompilerInstance(std::string CI_Name){
+void CustomDiagContainer::SetCompilerInstanceName(std::string &CI_Name){
+  CompilerInstanceName = CI_Name;
   return;
 }
 
 void CustomDiagContainer::AddDiagnostic(DiagnosticsEngine::Level DiagLevel, const Diagnostic &Info){
+  //check if already exists in 2 ways:
+  //if diaglist is empty, then does not exist. create new struct
+  if (DiagList.empty()){
+    llvm::SmallVector<char, 256> message;
+    Info.FormatDiagnostic(message);
+    AddNewStruct(std::string(message.begin(), message.end()), Info.getSourceManager().getFilename(Info.getLocation()),
+    Info.getSourceManager().getSpellingLineNumber(Info.getLocation()));
+  }
+  //if diaglist is not empty, use AlreadyExists to check if already exists
+  else{
+    
+
+  }
+  
+  return;
+}
+
+void CustomDiagContainer::PrintDiagnostics(){
   return;
 }
 
