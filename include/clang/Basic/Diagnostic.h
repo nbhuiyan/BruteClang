@@ -1471,6 +1471,7 @@ class CustomDiagContainer{
       std::string msg;
       std::string FileName;
       unsigned LineNumber;
+      unsigned ColumnNumber;
     } DiagData;
   private:
   std::string CompilerInstanceName;
@@ -1480,7 +1481,7 @@ class CustomDiagContainer{
   bool AlreadyExists(std::string &message, unsigned line);
 
   //if a diagnostic message and line number combination does not already exist, create a new one.
-  void AddNewStruct(std::string &msg, std::string &FileName, unsigned LineNumber);
+  void AddNewStruct(std::string &FileName, unsigned ColumnNumber, unsigned LineNumber, std::string &message);
 
   //if a diagnostic message and line number combination exists, then add to the existing corresponding struct.
   void AddToExistingStruct(std::string &message, unsigned line);
@@ -1491,7 +1492,7 @@ class CustomDiagContainer{
   void SetCompilerInstanceName(std::string &CI_Name);
   
   //from HandleDiagnostics, this will be used to pass a new diagnostic to the container.
-  void AddDiagnostic(DiagnosticsEngine::Level DiagLevel, const Diagnostic &Info);
+  void AddDiagnostic(std::string &FileName, unsigned ColumnNumber, unsigned LineNumber, std::string &message);
   
   //from cc1-main, this will be used for handling 
   void PrintDiagnostics();
