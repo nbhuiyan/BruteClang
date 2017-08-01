@@ -275,12 +275,9 @@ CompilerInstance::createDiagnostics(DiagnosticOptions *Opts,
 
   // Create the diagnostic client for reporting errors or for
   // implementing -verify.
-  llvm::outs() << "in CompilerInstance::CreateDiagnostics(), line 278 of CompilerInstance.cpp\n";
   if (Client) {
-    llvm::outs() <<"if (Client) true, so using own client.\n";
     Diags->setClient(Client, ShouldOwnClient);
   } else
-    llvm::outs() << "if (Client) false, so using TextDiagnosticsPrinter\n";
     Diags->setClient(new TextDiagnosticPrinter(llvm::errs(), Opts));
 
   // Chain in -verify checker, if requested.

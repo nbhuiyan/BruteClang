@@ -246,8 +246,8 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
     llvm::InitializeAllTargetMCs();
     llvm::InitializeAllAsmPrinters();
     llvm::InitializeAllAsmParsers();
-    std::list<std::string> good_CI; //list of bad compiler instances
-    std::list<std::string> bad_CI; //list of good compiler instances
+    /*std::list<std::string> good_CI; //list of bad compiler instances
+    std::list<std::string> bad_CI; //list of good compiler instances*/
     std::string str; //string buffer to store input from config file
     std::string current_CI;
     config >> str; // starting things off
@@ -260,8 +260,8 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
     while (1){
       if (str.back() == ':'){
         current_CI = str;
-        CustomContainer.SetCompilerInstanceName(Current_CI);
         current_CI.pop_back();
+        DiagContainer.SetCompilerInstanceName(current_CI);
         std::unique_ptr<CompilerInstance> Clang(new CompilerInstance());
         IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
 
@@ -286,7 +286,7 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
 
     while (1){
       config >> str;
-      if ((str.back() == ':')){
+      if (str.back() == ':'){
         break;
       }
       if(str.front() == '-'){
@@ -327,12 +327,12 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
   // If any timers were active but haven't been destroyed yet, print their
   // results now.  This happens in -disable-free mode.
     
-    if (Clang->getDiagnosticClient().getNumErrors() > 0){
+    /*if (Clang->getDiagnosticClient().getNumErrors() > 0){
       bad_CI.push_back(current_CI);
     }
     else{
       good_CI.push_back(current_CI);
-    }
+    }*/
 
 
   // Our error handler depends on the Diagnostics object, which we're
@@ -345,8 +345,8 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
       break;
     }
     }
-    CustomContainer.PrintDiagnostics();
-    if (bad_CI.empty()){
+    DiagContainer.PrintDiagnostics();
+    /*if (bad_CI.empty()){
       llvm::outs() << "No Compiler Instances reported any errors!\n";
     }
     else{
@@ -375,7 +375,7 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
           }
         }
       }
-    }
+    }*/
 
     return 0;
  }

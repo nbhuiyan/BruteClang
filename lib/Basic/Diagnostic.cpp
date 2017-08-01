@@ -387,7 +387,6 @@ void DiagnosticsEngine::Report(const StoredDiagnostic &storedDiag) {
   assert(Client && "DiagnosticConsumer not set!");
   Level DiagLevel = storedDiag.getLevel();
   Diagnostic Info(this, storedDiag.getMessage());
-  llvm::outs() << "printing out the message in DiagnosticsEngine::Report in Diagnostic.cpp" << std::string(storedDiag.getMessage()) << "\n";
   Client->HandleDiagnostic(DiagLevel, Info);
   if (Client->IncludeInDiagnosticCounts()) {
     if (DiagLevel == DiagnosticsEngine::Warning)
@@ -411,7 +410,6 @@ bool DiagnosticsEngine::EmitCurrentDiagnostic(bool Force) {
     Emitted = (DiagLevel != DiagnosticIDs::Ignored);
     if (Emitted) {
       // Emit the diagnostic regardless of suppression level.
-      llvm::outs() << "about to call DiagnosticIDs::EmitDiag() from DiagnosticsEngine::EmitCurrentDiagnostic()\n";
       Diags->EmitDiag(*this, DiagLevel);
     }
   } else {
@@ -1028,10 +1026,10 @@ void CustomDiagConsumer::anchor() { }
 
 void CustomDiagConsumer::HandleDiagnostic(DiagnosticsEngine::Level DiagLevel, const Diagnostic &Info){
   
-  if (DiagLevel == DiagnosticsEngine::Warning)
+  /*if (DiagLevel == DiagnosticsEngine::Warning)
     ++NumWarnings;
   else if (DiagLevel >= DiagnosticsEngine::Error)
-    ++NumErrors;
+    ++NumErrors;*/
   
   llvm::SmallVector<char, 256> message_SmallVector; //creating a llvm::SmallVector character buffer
   Info.FormatDiagnostic(message_SmallVector); //format the diagnostic message into the message buffer
