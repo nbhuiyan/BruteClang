@@ -1121,7 +1121,11 @@ void CustomDiagContainer::PrintDiagnostics(){ //TODO: Multiple structs case not 
     ":" << DiagList.begin()->ColumnNumber << ": error: "<< DiagList.begin()->msg << "\n";
   }
   else{
-      llvm::errs() <<"More than one struct. need to implement code to handle that!";
+    for (std::list<DiagData>::iterator it = DiagList.begin(); it != DiagList.end(); it++){
+      llvm::errs() << it->CI_Names << ":\n";
+      llvm::errs() << it->FileName << ":" << it->LineNumber << ":" << it->ColumnNumber <<
+      " error: " << it->msg << "\n";
+    }
   }
     
 }
