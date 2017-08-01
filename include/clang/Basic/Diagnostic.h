@@ -1467,7 +1467,7 @@ class IgnoringDiagConsumer : public DiagnosticConsumer {
 // ------ Custom Diagnostic Contanier for OMRChecker
 class CustomDiagContainer{
     typedef struct DiagData{
-      std::list<std::string> CI_Names;
+      std::string CI_Names;
       std::string msg;
       std::string FileName;
       unsigned LineNumber;
@@ -1498,16 +1498,17 @@ class CustomDiagContainer{
   void PrintDiagnostics();
 };
 
-
 // ------ custom diagnostic consumer for OMRChecker
 class CustomDiagConsumer : public DiagnosticConsumer {
   virtual void anchor();
-  DiagnosticContainer DiagContainer;
 
   void HandleDiagnostic(DiagnosticsEngine::Level DiagLevel, const Diagnostic &Info);
+  private:
+  
+  CustomDiagContainer &DiagContainer;
 
   public:
-  void setContainer(CustomDiagContainer &Container);
+  CustomDiagConsumer(CustomDiagContainer& Container) : DiagContainer(Container) {}
 };
 /// \brief Diagnostic consumer that forwards diagnostics along to an
 /// existing, already-initialized diagnostic consumer.

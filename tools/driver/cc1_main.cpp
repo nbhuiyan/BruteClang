@@ -254,7 +254,7 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
     frontend::IncludeDirGroup Group = frontend::Angled;
 
     //custom diagnostic container
-    clang::CustomDiagContainer CustomContainer;
+    CustomDiagContainer DiagContainer;
 
     
     while (1){
@@ -319,8 +319,8 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
     if (!Success)
       return 1;
  //setting up the diagnostic client to our custom one.
-  Clang->getDiagnostics().setClient(new CustomDiagConsumer(), true);
-  Clang->getDiagnostics().getClient().setContainer(CustomContainer);
+  Clang->getDiagnostics().setClient(new CustomDiagConsumer(DiagContainer), true);
+  //Clang->getDiagnostics().getClient().setContainer(CustomContainer);
    // Execute the frontend actions.
     Success = ExecuteCompilerInvocation(Clang.get());
 
