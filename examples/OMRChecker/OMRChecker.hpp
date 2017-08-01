@@ -1027,7 +1027,7 @@ protected:
    * Required function -- pure virtual in parent
    */
    bool ParseArgs(const CompilerInstance &CI,
-                  const std::vector<std::string>& args) {
+                  const std::vector<std::string>& args) override{
      /*for (unsigned i = 0, e = args.size(); i != e; ++i) {
        llvm::errs() << "PrintFunctionNames arg = " << args[i] << "\n";
 
