@@ -243,17 +243,13 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
     return !Success;
   } else{
 
-    /*std::list<std::string> good_CI; //list of bad compiler instances
-    std::list<std::string> bad_CI; //list of good compiler instances*/
     std::string str; //string buffer to store input from config file
     std::string current_CI;
-    config >> str; // starting things off
+    config >> str; // read first CI ID
     frontend::IncludeDirGroup Group = frontend::Angled;
 
-    //custom diagnostic container
     CustomDiagContainer DiagContainer;
 
-    
     while (1){
       if (str.back() == ':'){
         current_CI = str;
@@ -262,118 +258,84 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
         std::unique_ptr<CompilerInstance> Clang(new CompilerInstance());
         IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
 
-    // Register the support for object-file-wrapped Clang modules.
-    auto PCHOps = Clang->getPCHContainerOperations();
-    PCHOps->registerWriter(llvm::make_unique<ObjectFilePCHContainerWriter>());
-    PCHOps->registerReader(llvm::make_unique<ObjectFilePCHContainerReader>());
+        // Next three blocks copied from default implementation. Doesn't work without it
+        // Register the support for object-file-wrapped Clang modules.
+        auto PCHOps = Clang->getPCHContainerOperations();
+        PCHOps->registerWriter(llvm::make_unique<ObjectFilePCHContainerWriter>());
+        PCHOps->registerReader(llvm::make_unique<ObjectFilePCHContainerReader>());
 
-  // Buffer diagnostics from argument parsing so that we can output them using a
-  // well formed diagnostic object.
-    IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts = new DiagnosticOptions();
-    TextDiagnosticBuffer *DiagsBuffer = new TextDiagnosticBuffer;
-    DiagnosticsEngine Diags(DiagID, &*DiagOpts, DiagsBuffer);
-    bool Success = CompilerInvocation::CreateFromArgs(
-      Clang->getInvocation(), Argv.begin(), Argv.end(), Diags);
+        // Buffer diagnostics from argument parsing so that we can output them using a
+        // well formed diagnostic object.
+        IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts = new DiagnosticOptions();
+        TextDiagnosticBuffer *DiagsBuffer = new TextDiagnosticBuffer;
+        DiagnosticsEngine Diags(DiagID, &*DiagOpts, DiagsBuffer);
+        bool Success = CompilerInvocation::CreateFromArgs(
+          Clang->getInvocation(), Argv.begin(), Argv.end(), Diags);
 
-  // Infer the builtin include path if unspecified.
-    if (Clang->getHeaderSearchOpts().UseBuiltinIncludes &&
-        Clang->getHeaderSearchOpts().ResourceDir.empty())
-        Clang->getHeaderSearchOpts().ResourceDir =
-      CompilerInvocation::GetResourcesPath(Argv0, MainAddr);
+        // Infer the builtin include path if unspecified.
+        if (Clang->getHeaderSearchOpts().UseBuiltinIncludes &&
+            Clang->getHeaderSearchOpts().ResourceDir.empty())
+            Clang->getHeaderSearchOpts().ResourceDir =
+            CompilerInvocation::GetResourcesPath(Argv0, MainAddr);
 
-    while (1){
-      config >> str;
-      if (str.back() == ':'){
-        break;
-      }
-      if(str.front() == '-'){
-        str.erase(str.begin()); //remove '-'
-        if (str.front() == 'I'){ //handle includes
-          str.pop_back(); //remove single quote ['] at the back
-          str.erase(str.begin(), str.begin()+2); //remove I and single quote [']
-          Clang->getHeaderSearchOpts().AddPath(str, Group, false, true);
+        while (1){
+          config >> str;
+          if (str.back() == ':'){
+            break;
+          }
+          if(str.front() == '-'){
+            str.erase(str.begin()); //remove '-'
+            if (str.front() == 'I'){ //handle includes
+              str.pop_back(); //remove single quote ['] at the back
+              str.erase(str.begin(), str.begin()+2); //remove I and single quote [']
+              Clang->getHeaderSearchOpts().AddPath(str, Group, false, true);
+            }
+            else if(str.front() == 'D'){ //handle macrodefs
+              str.erase(str.begin()); //remove D
+              //invokes new AssignMacroDef function
+              CompilerInvocation::AssignMacroDef(Clang->getInvocation() , llvm::StringRef(str));
+            } 
+          }
+          if (config.eof()){
+            break;
+          }
         }
-        else if(str.front() == 'D'){ //handle macrodefs
-          str.erase(str.begin()); //remove D
-          CompilerInvocation::AssignMacroDef(Clang->getInvocation() , llvm::StringRef(str));
-        } 
+
+        // Create the actual diagnostics engine.
+        Clang->createDiagnostics();
+        if (!Clang->hasDiagnostics())
+         return 1;
+
+        // Set an error handler, so that any LLVM backend diagnostics go through our
+        // error handler.
+        llvm::install_fatal_error_handler(LLVMErrorHandler,
+                                      static_cast<void*>(&Clang->getDiagnostics()));
+
+        DiagsBuffer->FlushDiagnostics(Clang->getDiagnostics());
+
+        if (!Success)
+          return 1;
+
+        //setting up the diagnostic client to our custom one.
+        Clang->getDiagnostics().setClient(new CustomDiagConsumer(DiagContainer), true);
+
+        // Execute the frontend actions.
+        Success = ExecuteCompilerInvocation(Clang.get());
+
+        // Our error handler depends on the Diagnostics object, which we're
+        // potentially about to delete. Uninstall the handler now so that any
+        // later errors use the default handling behavior instead.
+        llvm::remove_fatal_error_handler();
+
       }
+
       if (config.eof()){
         break;
       }
     }
-    // Create the actual diagnostics engine.
-    Clang->createDiagnostics();
-    if (!Clang->hasDiagnostics())
-     return 1;
 
-    // Set an error handler, so that any LLVM backend diagnostics go through our
-    // error handler.
-    llvm::install_fatal_error_handler(LLVMErrorHandler,
-                                  static_cast<void*>(&Clang->getDiagnostics()));
-
-    DiagsBuffer->FlushDiagnostics(Clang->getDiagnostics());
-    if (!Success)
-      return 1;
- //setting up the diagnostic client to our custom one.
-  Clang->getDiagnostics().setClient(new CustomDiagConsumer(DiagContainer), true);
-  //Clang->getDiagnostics().getClient().setContainer(CustomContainer);
-   // Execute the frontend actions.
-    Success = ExecuteCompilerInvocation(Clang.get());
-
-  // If any timers were active but haven't been destroyed yet, print their
-  // results now.  This happens in -disable-free mode.
-    
-    /*if (Clang->getDiagnosticClient().getNumErrors() > 0){
-      bad_CI.push_back(current_CI);
-    }
-    else{
-      good_CI.push_back(current_CI);
-    }*/
-
-
-  // Our error handler depends on the Diagnostics object, which we're
-  // potentially about to delete. Uninstall the handler now so that any
-  // later errors use the default handling behavior instead.
-    llvm::remove_fatal_error_handler();
-
-      }
-    if (config.eof()){
-      break;
-    }
-    }
     DiagContainer.PrintDiagnostics();
-    /*if (bad_CI.empty()){
-      llvm::outs() << "No Compiler Instances reported any errors!\n";
-    }
-    else{
-      if (good_CI.empty()){
-        llvm::outs() << "Warning: All Compiler Instances reported erros!";
-      }
-      else{
-        llvm::outs() << "Warning: some tests failed!\n";
-        llvm::outs() << "Errors reported in the following compiler instance(s):\n";
-        if (bad_CI.size() == 1){
-          llvm::outs() << bad_CI.front() << "\n";
-        }
-        else{
-          for (std::list<std::string>::iterator it = bad_CI.begin(); it != bad_CI.end(); it++){
-            llvm::outs() << *it << "\n";
-          }
-        }
-
-        llvm::outs() << "No errors were reported in the following compiler instance(s):\n";
-        if (good_CI.size() == 1){
-          llvm::outs() << good_CI.front() << "\n";
-        }
-        else{
-          for (std::list<std::string>::iterator it = good_CI.begin(); it != good_CI.end(); it++){
-            llvm::outs() << *it << "\n";
-          }
-        }
-      }
-    }*/
 
     return 0;
- }
+  }
 }
