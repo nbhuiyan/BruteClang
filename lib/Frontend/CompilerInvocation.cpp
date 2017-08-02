@@ -2571,7 +2571,7 @@ static void ParseTargetArgs(TargetOptions &Opts, ArgList &Args,
   Opts.OpenCLExtensionsAsWritten = Args.getAllArgValues(OPT_cl_ext_EQ);
 }
 
-//function definition of the function to assign macro def to compiler invocations which can
+//assigns macro def to compiler invocations which can
 //be accessed from cc1_main()
 void CompilerInvocation::AssignMacroDef(CompilerInvocation &CI, llvm::StringRef str){
   CI.getPreprocessorOpts().addMacroDef(str);
