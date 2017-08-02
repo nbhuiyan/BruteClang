@@ -1025,18 +1025,13 @@ void IgnoringDiagConsumer::anchor() { }
 void CustomDiagConsumer::anchor() { }
 
 void CustomDiagConsumer::HandleDiagnostic(DiagnosticsEngine::Level DiagLevel, const Diagnostic &Info){
-  
-  /*if (DiagLevel == DiagnosticsEngine::Warning)
-    ++NumWarnings;
-  else if (DiagLevel >= DiagnosticsEngine::Error)
-    ++NumErrors;*/
-  
-  llvm::SmallVector<char, 256> message_SmallVector; //creating a llvm::SmallVector character buffer
+
+  llvm::SmallVector<char, 256> message_SmallVector; //character buffer for formatting diagnostics messages
   Info.FormatDiagnostic(message_SmallVector); //format the diagnostic message into the message buffer
   std::string message(message_SmallVector.begin(), message_SmallVector.end()); //convert the llvm::SmallVector buffer to a std::string obj
   
   unsigned ColumnNumber = Info.getSourceManager().getSpellingColumnNumber(Info.getLocation());
-  unsigned LineNumber = Info.getSourceManager().getSpellingLineNumber(Info.getLocation()); //line number
+  unsigned LineNumber = Info.getSourceManager().getSpellingLineNumber(Info.getLocation());
   
   llvm::StringRef FileName_StringRef = Info.getSourceManager().getFilename(Info.getLocation());
   std::string FileName(FileName_StringRef.begin(), FileName_StringRef.end()); //file name as std::string
@@ -1090,11 +1085,8 @@ void CustomDiagContainer::SetCompilerInstanceName(std::string &CI_Name){
 }
 
 void CustomDiagContainer::AddDiagnostic(std::string &FileName, unsigned ColumnNumber, unsigned LineNumber, std::string &message){
-  //extract all data from the Diagnostic object
 
-
-  //check if already exists in 2 ways:
-  //if diaglist is empty, then does not exist. create new struct
+  //if diaglist is empty, then does not exist & create new struct
   if (DiagList.empty()){
     AddNewStruct(FileName, ColumnNumber, LineNumber, message);
   }
