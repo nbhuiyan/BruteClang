@@ -1,3 +1,14 @@
+#include "clang/Basic/CharInfo.h"
+#include "clang/Basic/Diagnostic.h"
+#include "clang/Basic/DiagnosticOptions.h"
+#include "clang/Basic/IdentifierTable.h"
+#include "clang/Basic/PartialDiagnostic.h"
+#include "clang/Basic/SourceManager.h"
+#include "llvm/ADT/SmallString.h"
+#include "llvm/ADT/StringExtras.h"
+#include "llvm/Support/CrashRecoveryContext.h"
+#include "llvm/Support/Locale.h"
+#include "llvm/Support/raw_ostream.h"
 #include "clang/Basic/BruteClangDiagnostic.h"
 
 void CustomDiagConsumer::anchor() { }
