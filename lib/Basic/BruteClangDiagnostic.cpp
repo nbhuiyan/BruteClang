@@ -50,7 +50,7 @@ void CustomDiagContainer::AddNewDiagData(std::string &FileName, unsigned ColumnN
   return;
 }
 
-void CustomDiagContainer::AddToExistingStruct(std::string &message, unsigned line){
+void CustomDiagContainer::AddToExistingDiagData(std::string &message, unsigned line){
 
   for (std::list<DiagData>::iterator it = DiagList.begin(); it != DiagList.end(); it++){
     if((it->msg == message)&&(it->LineNumber == line)){
@@ -75,10 +75,10 @@ void CustomDiagContainer::AddDiagnostic(std::string &FileName, unsigned ColumnNu
   else{
     if(!(DiagExists(message, LineNumber))){
       //does not already exist, so add new struct
-      AddToExistingStruct(FileName, ColumnNumber, LineNumber, message);
+      AddToExistingDiagData(FileName, ColumnNumber, LineNumber, message);
     }
     else{
-      AddToExistingStruct(message, LineNumber);
+      AddToExistingDiagData(message, LineNumber);
     }
   }
 }
