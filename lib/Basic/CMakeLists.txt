@@ -68,6 +68,7 @@ add_clang_library(clangBasic
   CharInfo.cpp
   Cuda.cpp
   Diagnostic.cpp
+  BruteClangDiagnostic.cpp
   DiagnosticIDs.cpp
   DiagnosticOptions.cpp
   FileManager.cpp
