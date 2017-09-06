@@ -1,4 +1,4 @@
-#include "BruteClangDiagnostic.h"
+#include "clang/Basic/BruteClangDiagnostic.h"
 
 void CustomDiagConsumer::anchor() { }
 
