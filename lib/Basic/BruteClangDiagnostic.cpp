@@ -32,11 +32,6 @@ void CustomDiagConsumer::HandleDiagnostic(DiagnosticsEngine::Level DiagLevel, co
 
 
 bool CustomDiagContainer::AlreadyExists(std::string &message, unsigned line){
-  if (DiagList.size() == 1){
-    if ((DiagList.begin()->msg == message)&&(DiagList.begin()->LineNumber == line)){
-      return true;
-    }
-  }
   for (std::list<DiagData>::iterator it = DiagList.begin(); it != DiagList.end(); it++){
     if((it->msg == message)&&(it->LineNumber == line)){
       return true; //return true if any of the structs match line number and message
@@ -56,16 +51,11 @@ void CustomDiagContainer::AddNewStruct(std::string &FileName, unsigned ColumnNum
 }
 
 void CustomDiagContainer::AddToExistingStruct(std::string &message, unsigned line){
-  if (DiagList.size() == 1){
-    DiagList.begin()->CI_Names.append(", ");
-    DiagList.begin()->CI_Names.append(CompilerInstanceName);
-  }
-  else{
-    for (std::list<DiagData>::iterator it = DiagList.begin(); it != DiagList.end(); it++){
-      if((it->msg == message)&&(it->LineNumber == line)){
-        it->CI_Names.append(", ");
-        it->CI_Names.append(CompilerInstanceName);
-      }
+
+  for (std::list<DiagData>::iterator it = DiagList.begin(); it != DiagList.end(); it++){
+    if((it->msg == message)&&(it->LineNumber == line)){
+      it->CI_Names.append(", ");
+      it->CI_Names.append(CompilerInstanceName);
     }
   }
 }
@@ -97,11 +87,6 @@ void CustomDiagContainer::PrintDiagnostics(){ //TODO: Multiple structs case not 
   unsigned NumStructs = DiagList.size();
   if (NumStructs == 0){
     llvm::outs() << "No compiler instance reported any errors!\n";
-  }
-  else if(NumStructs == 1){
-    llvm::errs() << DiagList.begin()->CI_Names << ":\n";
-    llvm::errs() << DiagList.begin()->FileName << ":" << DiagList.begin()->LineNumber <<
-    ":" << DiagList.begin()->ColumnNumber << ": error: "<< DiagList.begin()->msg << "\n";
   }
   else{
     for (std::list<DiagData>::iterator it = DiagList.begin(); it != DiagList.end(); it++){
