@@ -31,7 +31,7 @@ void CustomDiagConsumer::HandleDiagnostic(DiagnosticsEngine::Level DiagLevel, co
 }
 
 
-bool CustomDiagContainer::AlreadyExists(std::string &message, unsigned line){
+bool CustomDiagContainer::DiagExists(std::string &message, unsigned line){
   for (std::list<DiagData>::iterator it = DiagList.begin(); it != DiagList.end(); it++){
     if((it->msg == message)&&(it->LineNumber == line)){
       return true; //return true if any of the structs match line number and message
@@ -40,7 +40,7 @@ bool CustomDiagContainer::AlreadyExists(std::string &message, unsigned line){
   return false; //if for loop did not return true, then return false.
 }
 
-void CustomDiagContainer::AddNewStruct(std::string &FileName, unsigned ColumnNumber, unsigned LineNumber, std::string &message){
+void CustomDiagContainer::AddNewDiagData(std::string &FileName, unsigned ColumnNumber, unsigned LineNumber, std::string &message){
   DiagData DD;
   DD.CI_Names = CompilerInstanceName;
   DD.msg = message;
@@ -69,13 +69,13 @@ void CustomDiagContainer::AddDiagnostic(std::string &FileName, unsigned ColumnNu
 
   //if diaglist is empty, then does not exist & create new struct
   if (DiagList.empty()){
-    AddNewStruct(FileName, ColumnNumber, LineNumber, message);
+    AddNewDiagData(FileName, ColumnNumber, LineNumber, message);
   }
   //if diaglist is not empty, use AlreadyExists to check if already exists
   else{
-    if(!(AlreadyExists(message, LineNumber))){
+    if(!(DiagExists(message, LineNumber))){
       //does not already exist, so add new struct
-      AddNewStruct(FileName, ColumnNumber, LineNumber, message);
+      AddToExistingStruct(FileName, ColumnNumber, LineNumber, message);
     }
     else{
       AddToExistingStruct(message, LineNumber);
