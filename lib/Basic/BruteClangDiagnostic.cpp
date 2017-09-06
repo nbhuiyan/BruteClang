@@ -75,7 +75,7 @@ void CustomDiagContainer::AddDiagnostic(std::string &FileName, unsigned ColumnNu
   else{
     if(!(DiagExists(message, LineNumber))){
       //does not already exist, so add new struct
-      AddToExistingDiagData(FileName, ColumnNumber, LineNumber, message);
+      AddNewDiagData(FileName, ColumnNumber, LineNumber, message);
     }
     else{
       AddToExistingDiagData(message, LineNumber);
