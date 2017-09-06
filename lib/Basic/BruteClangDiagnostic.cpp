@@ -11,6 +11,8 @@
 #include "llvm/Support/raw_ostream.h"
 #include "clang/Basic/BruteClangDiagnostic.h"
 
+using namespace clang;
+
 void CustomDiagConsumer::anchor() { }
 
 void CustomDiagConsumer::HandleDiagnostic(DiagnosticsEngine::Level DiagLevel, const Diagnostic &Info){
