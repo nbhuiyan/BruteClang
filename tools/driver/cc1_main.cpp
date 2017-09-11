@@ -308,7 +308,7 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
     ExecuteCI("P", Group, DiagContainer, Argv, Argv0, MainAddr);
   }
   else if(isInFileList("z_files.config", fileName)){
-    ExecuteCI("P", Group, DiagContainer, Argv, Argv0, MainAddr);
+    ExecuteCI("Z", Group, DiagContainer, Argv, Argv0, MainAddr);
   }
   else{
     llvm::errs() << "Unknown file. Please check the file lists.";
