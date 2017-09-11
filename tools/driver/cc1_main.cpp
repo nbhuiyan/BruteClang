@@ -20,7 +20,7 @@
 #include "clang/Driver/Options.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/CompilerInvocation.h"
-#include "clang/Basic/BruteClangDiagnostic.h"
+#include "clang/Basic/BruteClangDiagnostic.h" //access the functionality of BruteClangDiagnostic classes
 #include "clang/Frontend/FrontendDiagnostic.h"
 #include "clang/Frontend/TextDiagnosticBuffer.h"
 #include "clang/Frontend/TextDiagnosticPrinter.h"
@@ -40,6 +40,9 @@
 #include <cstdio>
 #include <fstream>
 #include <list>
+#include <set>
+#include <iterator>
+#include <algorithm>
 
 #ifdef CLANG_HAVE_RLIMITS
 #include <sys/resource.h>
@@ -170,173 +173,150 @@ static void ensureSufficientStack() {
 static void ensureSufficientStack() {}
 #endif
 
+bool isInFileList(std::string &configFile, std::string &fileName){ 
+//this function checks if fileName exists in the configFile
+  std::ifstream CFStream;
+  CFStream.open(configFile);
+
+  std::set<std::string> FileSet;
+
+  //copy contents of the config file into a set
+  std::copy(std::istream_iterator<std::string>(CFStream),
+            std::istream_iterator<std::string>(),
+            std::inserter(FileSet, FileSet.end()));
+
+  std::set<std::string>iterator it;
+  it = FileSet.find(fileName);
+  if (it == FileSet.end()){
+    return false;
+  }
+  else{
+    return true;
+  }
+}
+
+void ExecuteCI(std::string &platform, frontend::IncludeDirGroup Group, 
+CustomDiagContainer &DiagContainer, ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr){
+  current_CI = platform;
+  current_CI.pop_back();
+  DiagContainer.SetCompilerInstanceName(current_CI);
+  std::unique_ptr<CompilerInstance> Clang(new CompilerInstance());
+  IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
+
+  // Next three blocks copied from default implementation. Doesn't work without it
+  // Register the support for object-file-wrapped Clang modules.
+  auto PCHOps = Clang->getPCHContainerOperations();
+  PCHOps->registerWriter(llvm::make_unique<ObjectFilePCHContainerWriter>());
+  PCHOps->registerReader(llvm::make_unique<ObjectFilePCHContainerReader>());
+
+  // Buffer diagnostics from argument parsing so that we can output them using a
+  // well formed diagnostic object.
+  IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts = new DiagnosticOptions();
+  TextDiagnosticBuffer *DiagsBuffer = new TextDiagnosticBuffer;
+  DiagnosticsEngine Diags(DiagID, &*DiagOpts, DiagsBuffer);
+  bool Success = CompilerInvocation::CreateFromArgs(
+    Clang->getInvocation(), Argv.begin(), Argv.end(), Diags);
+
+  // Infer the builtin include path if unspecified.
+  if (Clang->getHeaderSearchOpts().UseBuiltinIncludes &&
+      Clang->getHeaderSearchOpts().ResourceDir.empty())
+      Clang->getHeaderSearchOpts().ResourceDir =
+      CompilerInvocation::GetResourcesPath(Argv0, MainAddr);
+  
+  while (1){
+    config >> str;
+    if(str.front() == '-'){
+      str.erase(str.begin()); //remove '-'
+      if (str.front() == 'I'){ //handle includes
+        str.pop_back(); //remove single quote ['] at the back
+        str.erase(str.begin(), str.begin()+2); //remove I and single quote [']
+        Clang->getHeaderSearchOpts().AddPath(str, Group, false, true);
+      }
+      else if(str.front() == 'D'){ //handle macrodefs
+        str.erase(str.begin()); //remove D
+        //invokes new AssignMacroDef function
+        CompilerInvocation::AssignMacroDef(Clang->getInvocation() , llvm::StringRef(str));
+      }
+    }
+    if (config.eof()){
+      break;
+    }
+  }
+
+  Clang->createDiagnostics();
+  if (!Clang->hasDiagnostics())
+    return 1;
+
+  // Set an error handler, so that any LLVM backend diagnostics go through our
+  // error handler.
+  llvm::install_fatal_error_handler(LLVMErrorHandler,
+                                static_cast<void*>(&Clang->getDiagnostics()));
+
+  DiagsBuffer->FlushDiagnostics(Clang->getDiagnostics());
+
+  if (!Success)
+    return 1;
+
+  //setting up the diagnostic client to our custom one.
+  Clang->getDiagnostics().setClient(new CustomDiagConsumer(DiagContainer), true);
+
+  // Execute the frontend actions.
+  Success = ExecuteCompilerInvocation(Clang.get());
+
+  // Our error handler depends on the Diagnostics object, which we're
+  // potentially about to delete. Uninstall the handler now so that any
+  // later errors use the default handling behavior instead.
+  llvm::remove_fatal_error_handler();
+
+}
+
 int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
   ensureSufficientStack();
-  std::ifstream config;
-  config.open("var.config");
 
   // Initialize targets first, so that --version shows registered targets.
-    llvm::InitializeAllTargets();
-    llvm::InitializeAllTargetMCs();
-    llvm::InitializeAllAsmPrinters();
-    llvm::InitializeAllAsmParsers();
+  llvm::InitializeAllTargets();
+  llvm::InitializeAllTargetMCs();
+  llvm::InitializeAllAsmPrinters();
+  llvm::InitializeAllAsmParsers();
 
-  if (!config){
-    std::unique_ptr<CompilerInstance> Clang(new CompilerInstance());
-    IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
+  std::string inputString; //string buffer to store input from config files
+  frontend::IncludeDirGroup Group = frontend::Angled; //for -I command line arguments
 
-    // Register the support for object-file-wrapped Clang modules.
-    auto PCHOps = Clang->getPCHContainerOperations();
-    PCHOps->registerWriter(llvm::make_unique<ObjectFilePCHContainerWriter>());
-    PCHOps->registerReader(llvm::make_unique<ObjectFilePCHContainerReader>());
+  CustomDiagContainer DiagContainer;
 
-  #ifdef LINK_POLLY_INTO_TOOLS
-    llvm::PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
-    polly::initializePollyPasses(Registry);
-  #endif
+  std::string fileName(Argv.end()); //the last argument in the command line is the file name
 
-    // Buffer diagnostics from argument parsing so that we can output them using a
-    // well formed diagnostic object.
-    IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts = new DiagnosticOptions();
-    TextDiagnosticBuffer *DiagsBuffer = new TextDiagnosticBuffer;
-    DiagnosticsEngine Diags(DiagID, &*DiagOpts, DiagsBuffer);
-    bool Success = CompilerInvocation::CreateFromArgs(
-        Clang->getInvocation(), Argv.begin(), Argv.end(), Diags);
-
-    // Infer the builtin include path if unspecified.
-    if (Clang->getHeaderSearchOpts().UseBuiltinIncludes &&
-        Clang->getHeaderSearchOpts().ResourceDir.empty())
-      Clang->getHeaderSearchOpts().ResourceDir =
-        CompilerInvocation::GetResourcesPath(Argv0, MainAddr);
-
-    // Create the actual diagnostics engine.
-    Clang->createDiagnostics();
-    if (!Clang->hasDiagnostics())
-      return 1;
-
-    // Set an error handler, so that any LLVM backend diagnostics go through our
-    // error handler.
-    llvm::install_fatal_error_handler(LLVMErrorHandler,
-                                    static_cast<void*>(&Clang->getDiagnostics()));
-
-    DiagsBuffer->FlushDiagnostics(Clang->getDiagnostics());
-    if (!Success)
-      return 1;
-
-    // Execute the frontend actions.
-    Success = ExecuteCompilerInvocation(Clang.get());
-
-    // If any timers were active but haven't been destroyed yet, print their
-    // results now.  This happens in -disable-free mode.
-    llvm::TimerGroup::printAll(llvm::errs());
-
-    // Our error handler depends on the Diagnostics object, which we're
-    // potentially about to delete. Uninstall the handler now so that any
-    // later errors use the default handling behavior instead.
-    llvm::remove_fatal_error_handler();
-
-    // When running with -disable-free, don't do any destruction or shutdown.
-    if (Clang->getFrontendOpts().DisableFree) {
-      BuryPointer(std::move(Clang));
-      return !Success;
-    }
-
-    return !Success;
-  } else{
-
-    std::string str; //string buffer to store input from config file
-    std::string current_CI;
-    config >> str; // read first CI ID
-    frontend::IncludeDirGroup Group = frontend::Angled;
-
-    CustomDiagContainer DiagContainer;
-
-    while (1){
-      if (str.back() == ':'){
-        current_CI = str;
-        current_CI.pop_back();
-        DiagContainer.SetCompilerInstanceName(current_CI);
-        std::unique_ptr<CompilerInstance> Clang(new CompilerInstance());
-        IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
-
-        // Next three blocks copied from default implementation. Doesn't work without it
-        // Register the support for object-file-wrapped Clang modules.
-        auto PCHOps = Clang->getPCHContainerOperations();
-        PCHOps->registerWriter(llvm::make_unique<ObjectFilePCHContainerWriter>());
-        PCHOps->registerReader(llvm::make_unique<ObjectFilePCHContainerReader>());
-
-        // Buffer diagnostics from argument parsing so that we can output them using a
-        // well formed diagnostic object.
-        IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts = new DiagnosticOptions();
-        TextDiagnosticBuffer *DiagsBuffer = new TextDiagnosticBuffer;
-        DiagnosticsEngine Diags(DiagID, &*DiagOpts, DiagsBuffer);
-        bool Success = CompilerInvocation::CreateFromArgs(
-          Clang->getInvocation(), Argv.begin(), Argv.end(), Diags);
-
-        // Infer the builtin include path if unspecified.
-        if (Clang->getHeaderSearchOpts().UseBuiltinIncludes &&
-            Clang->getHeaderSearchOpts().ResourceDir.empty())
-            Clang->getHeaderSearchOpts().ResourceDir =
-            CompilerInvocation::GetResourcesPath(Argv0, MainAddr);
-
-        while (1){
-          config >> str;
-          if (str.back() == ':'){
-            break;
-          }
-          if(str.front() == '-'){
-            str.erase(str.begin()); //remove '-'
-            if (str.front() == 'I'){ //handle includes
-              str.pop_back(); //remove single quote ['] at the back
-              str.erase(str.begin(), str.begin()+2); //remove I and single quote [']
-              Clang->getHeaderSearchOpts().AddPath(str, Group, false, true);
-            }
-            else if(str.front() == 'D'){ //handle macrodefs
-              str.erase(str.begin()); //remove D
-              //invokes new AssignMacroDef function
-              CompilerInvocation::AssignMacroDef(Clang->getInvocation() , llvm::StringRef(str));
-            } 
-          }
-          if (config.eof()){
-            break;
-          }
-        }
-
-        // Create the actual diagnostics engine.
-        Clang->createDiagnostics();
-        if (!Clang->hasDiagnostics())
-         return 1;
-
-        // Set an error handler, so that any LLVM backend diagnostics go through our
-        // error handler.
-        llvm::install_fatal_error_handler(LLVMErrorHandler,
-                                      static_cast<void*>(&Clang->getDiagnostics()));
-
-        DiagsBuffer->FlushDiagnostics(Clang->getDiagnostics());
-
-        if (!Success)
-          return 1;
-
-        //setting up the diagnostic client to our custom one.
-        Clang->getDiagnostics().setClient(new CustomDiagConsumer(DiagContainer), true);
-
-        // Execute the frontend actions.
-        Success = ExecuteCompilerInvocation(Clang.get());
-
-        // Our error handler depends on the Diagnostics object, which we're
-        // potentially about to delete. Uninstall the handler now so that any
-        // later errors use the default handling behavior instead.
-        llvm::remove_fatal_error_handler();
-
-      }
-
-      if (config.eof()){
-        break;
-      }
-    }
-
-    DiagContainer.PrintDiagnostics();
-
+  if (isInFileList("common_files.config", fileName)){
+    //execute for all platforms
+    ExecuteCI("amd64", Group, DiagContainer, Argv, Argv0, MainAddr);
+    ExecuteCI("i386", Group, DiagContainer, Argv, Argv0, MainAddr);
+    ExecuteCI("P", Group, DiagContainer, Argv, Argv0, MainAddr);
+    ExecuteCI("Z", Group, DiagContainer, Argv, Argv0, MainAddr);
+  }
+  else if(isInFileList("x_files.config", fileName)){
+    //execute for just x family
+    ExecuteCI("amd64", Group, DiagContainer, Argv, Argv0, MainAddr);
+    ExecuteCI("i386", Group, DiagContainer, Argv, Argv0, MainAddr);
+  }
+  else if(isInFileList("amd64_files.config", fileName)){
+    ExecuteCI("amd64", Group, DiagContainer, Argv, Argv0, MainAddr);
+  }
+  else if(isInFileList("i386_files.config", fileName)){
+    ExecuteCI("i386", Group, DiagContainer, Argv, Argv0, MainAddr);
+  }
+  else if(isInFileList("p_files.config", fileName)){
+    ExecuteCI("P", Group, DiagContainer, Argv, Argv0, MainAddr);
+  }
+  else if(isInFileList("z_files.config", fileName)){
+    ExecuteCI("P", Group, DiagContainer, Argv, Argv0, MainAddr);
+  }
+  else{
+    llvm::errs() << "Unknown file. Please check the file lists.";
     return 0;
   }
+
+
+  DiagContainer.PrintDiagnostics();
+
+  return 0;
 }
