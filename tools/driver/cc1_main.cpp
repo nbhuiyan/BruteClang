@@ -197,8 +197,8 @@ bool isInFileList(std::string &configFile, std::string &fileName){
 
 void ExecuteCI(std::string &platform, frontend::IncludeDirGroup Group, 
 CustomDiagContainer &DiagContainer, ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr){
+  std::string current_CI;
   current_CI = platform;
-  current_CI.pop_back();
   DiagContainer.SetCompilerInstanceName(current_CI);
   std::unique_ptr<CompilerInstance> Clang(new CompilerInstance());
   IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
@@ -223,19 +223,24 @@ CustomDiagContainer &DiagContainer, ArrayRef<const char *> Argv, const char *Arg
       Clang->getHeaderSearchOpts().ResourceDir =
       CompilerInvocation::GetResourcesPath(Argv0, MainAddr);
   
+  std::string input_string;
+  std::ifstream config;
+  current_CI.append(".config");
+  config.open(current_CI);
+
   while (1){
-    config >> str;
-    if(str.front() == '-'){
-      str.erase(str.begin()); //remove '-'
-      if (str.front() == 'I'){ //handle includes
-        str.pop_back(); //remove single quote ['] at the back
-        str.erase(str.begin(), str.begin()+2); //remove I and single quote [']
-        Clang->getHeaderSearchOpts().AddPath(str, Group, false, true);
+    config >> input_string;
+    if(input_string.front() == '-'){
+      input_string.erase(input_string.begin()); //remove '-'
+      if (input_string.front() == 'I'){ //handle includes
+        input_string.pop_back(); //remove single quote ['] at the back
+        input_string.erase(input_string.begin(), input_string.begin()+2); //remove I and single quote [']
+        Clang->getHeaderSearchOpts().AddPath(input_string, Group, false, true);
       }
-      else if(str.front() == 'D'){ //handle macrodefs
-        str.erase(str.begin()); //remove D
+      else if(input_string.front() == 'D'){ //handle macrodefs
+        input_string.erase(input_string.begin()); //remove D
         //invokes new AssignMacroDef function
-        CompilerInvocation::AssignMacroDef(Clang->getInvocation() , llvm::StringRef(str));
+        CompilerInvocation::AssignMacroDef(Clang->getInvocation() , llvm::StringRef(input_string));
       }
     }
     if (config.eof()){
@@ -243,19 +248,12 @@ CustomDiagContainer &DiagContainer, ArrayRef<const char *> Argv, const char *Arg
     }
   }
 
-  Clang->createDiagnostics();
-  if (!Clang->hasDiagnostics())
-    return 1;
-
   // Set an error handler, so that any LLVM backend diagnostics go through our
   // error handler.
   llvm::install_fatal_error_handler(LLVMErrorHandler,
                                 static_cast<void*>(&Clang->getDiagnostics()));
 
   DiagsBuffer->FlushDiagnostics(Clang->getDiagnostics());
-
-  if (!Success)
-    return 1;
 
   //setting up the diagnostic client to our custom one.
   Clang->getDiagnostics().setClient(new CustomDiagConsumer(DiagContainer), true);
@@ -267,7 +265,6 @@ CustomDiagContainer &DiagContainer, ArrayRef<const char *> Argv, const char *Arg
   // potentially about to delete. Uninstall the handler now so that any
   // later errors use the default handling behavior instead.
   llvm::remove_fatal_error_handler();
-
 }
 
 int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
