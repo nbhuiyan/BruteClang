@@ -313,7 +313,7 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
     llvm::errs() << "Unknown file. Please check the file lists.\n";
     return 0;
   }
-  llvm::outs() <
+
   DiagContainer.PrintDiagnostics();
 
   return 0;
