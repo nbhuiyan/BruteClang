@@ -199,6 +199,7 @@ void ExecuteCI(std::string platform, frontend::IncludeDirGroup Group, CustomDiag
   std::string current_CI;
   current_CI = platform;
   DiagContainer.SetCompilerInstanceName(current_CI);
+  
   std::unique_ptr<CompilerInstance> Clang(new CompilerInstance());
   IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
 
@@ -221,6 +222,9 @@ void ExecuteCI(std::string platform, frontend::IncludeDirGroup Group, CustomDiag
       Clang->getHeaderSearchOpts().ResourceDir.empty())
       Clang->getHeaderSearchOpts().ResourceDir =
       CompilerInvocation::GetResourcesPath(Argv0, MainAddr);
+  
+
+  Clang->createDiagnostics();
   
   std::string input_string;
   std::ifstream config;
@@ -246,7 +250,6 @@ void ExecuteCI(std::string platform, frontend::IncludeDirGroup Group, CustomDiag
       break;
     }
   }
-
   // Set an error handler, so that any LLVM backend diagnostics go through our
   // error handler.
   llvm::install_fatal_error_handler(LLVMErrorHandler,
@@ -280,14 +283,14 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
 
   CustomDiagContainer DiagContainer;
 
-  std::string fileName = std::string(*Argv.end()); //the last argument in the command line is the file name
+  std::string fileName = std::string(Argv.back()); //the last argument in the command line is the file name
 
   if (isInFileList("common_files.config", fileName)){
     //execute for all platforms
     ExecuteCI("amd64", Group, DiagContainer, Argv, Argv0, MainAddr);
     ExecuteCI("i386", Group, DiagContainer, Argv, Argv0, MainAddr);
-    ExecuteCI("P", Group, DiagContainer, Argv, Argv0, MainAddr);
-    ExecuteCI("Z", Group, DiagContainer, Argv, Argv0, MainAddr);
+    ExecuteCI("p", Group, DiagContainer, Argv, Argv0, MainAddr);
+    ExecuteCI("z", Group, DiagContainer, Argv, Argv0, MainAddr);
   }
   else if(isInFileList("x_files.config", fileName)){
     //execute for just x family
@@ -301,16 +304,15 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
     ExecuteCI("i386", Group, DiagContainer, Argv, Argv0, MainAddr);
   }
   else if(isInFileList("p_files.config", fileName)){
-    ExecuteCI("P", Group, DiagContainer, Argv, Argv0, MainAddr);
+    ExecuteCI("p", Group, DiagContainer, Argv, Argv0, MainAddr);
   }
   else if(isInFileList("z_files.config", fileName)){
-    ExecuteCI("Z", Group, DiagContainer, Argv, Argv0, MainAddr);
+    ExecuteCI("z", Group, DiagContainer, Argv, Argv0, MainAddr);
   }
   else{
-    llvm::errs() << "Unknown file. Please check the file lists.";
+    llvm::errs() << "Unknown file. Please check the file lists.\n";
     return 0;
   }
-
 
   DiagContainer.PrintDiagnostics();
 
