@@ -173,7 +173,7 @@ static void ensureSufficientStack() {
 static void ensureSufficientStack() {}
 #endif
 
-bool isInFileList(std::string &configFile, std::string &fileName){ 
+bool isInFileList(std::string configFile, std::string &fileName){ 
 //this function checks if fileName exists in the configFile
   std::ifstream CFStream;
   CFStream.open(configFile);
@@ -185,7 +185,7 @@ bool isInFileList(std::string &configFile, std::string &fileName){
             std::istream_iterator<std::string>(),
             std::inserter(FileSet, FileSet.end()));
 
-  std::set<std::string>iterator it;
+  std::set<std::string>::iterator it;
   it = FileSet.find(fileName);
   if (it == FileSet.end()){
     return false;
@@ -195,8 +195,7 @@ bool isInFileList(std::string &configFile, std::string &fileName){
   }
 }
 
-void ExecuteCI(std::string &platform, frontend::IncludeDirGroup Group, 
-CustomDiagContainer &DiagContainer, ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr){
+void ExecuteCI(std::string platform, frontend::IncludeDirGroup Group, CustomDiagContainer &DiagContainer, ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr){
   std::string current_CI;
   current_CI = platform;
   DiagContainer.SetCompilerInstanceName(current_CI);
@@ -281,7 +280,7 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
 
   CustomDiagContainer DiagContainer;
 
-  std::string fileName(Argv.end()); //the last argument in the command line is the file name
+  std::string fileName = std::string(*Argv.end()); //the last argument in the command line is the file name
 
   if (isInFileList("common_files.config", fileName)){
     //execute for all platforms
