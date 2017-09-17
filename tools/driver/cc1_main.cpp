@@ -284,7 +284,7 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
   CustomDiagContainer DiagContainer;
 
   std::string fileName = std::string(Argv.back()); //the last argument in the command line is the file name
-
+  llvm::outs() << "Running on file " << fileName << ":\n";
   if (isInFileList("common_files.config", fileName)){
     //execute for all platforms
     ExecuteCI("amd64", Group, DiagContainer, Argv, Argv0, MainAddr);
@@ -313,7 +313,7 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
     llvm::errs() << "Unknown file. Please check the file lists.\n";
     return 0;
   }
-
+  llvm::outs() <
   DiagContainer.PrintDiagnostics();
 
   return 0;
