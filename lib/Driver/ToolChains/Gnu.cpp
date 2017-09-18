@@ -2291,7 +2291,7 @@ void Generic_GCC::printVerboseInfo(raw_ostream &OS) const {
   CudaInstallation.print(OS);
 }
 
-bool Generic_GCC::IsUnwindTablesDefault() const {
+bool Generic_GCC::IsUnwindTablesDefault(const ArgList &Args) const {
   return getArch() == llvm::Triple::x86_64;
 }
 
@@ -2461,7 +2461,8 @@ Generic_GCC::TranslateArgs(const llvm::opt::DerivedArgList &Args, StringRef,
 void Generic_ELF::anchor() {}
 
 void Generic_ELF::addClangTargetOptions(const ArgList &DriverArgs,
-                                        ArgStringList &CC1Args) const {
+                                        ArgStringList &CC1Args,
+                                        Action::OffloadKind) const {
   const Generic_GCC::GCCVersion &V = GCCInstallation.getVersion();
   bool UseInitArrayDefault =
       getTriple().getArch() == llvm::Triple::aarch64 ||
@@ -2470,7 +2471,8 @@ void Generic_ELF::addClangTargetOptions(const ArgList &DriverArgs,
        (!V.isOlderThan(4, 7, 0) || getTriple().isAndroid())) ||
       getTriple().getOS() == llvm::Triple::NaCl ||
       (getTriple().getVendor() == llvm::Triple::MipsTechnologies &&
-       !getTriple().hasEnvironment());
+       !getTriple().hasEnvironment()) ||
+      getTriple().getOS() == llvm::Triple::Solaris;
 
   if (DriverArgs.hasFlag(options::OPT_fuse_init_array,
                          options::OPT_fno_use_init_array, UseInitArrayDefault))

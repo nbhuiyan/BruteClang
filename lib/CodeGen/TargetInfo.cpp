@@ -183,7 +183,11 @@ const TargetInfo &ABIInfo::getTarget() const {
   return CGT.getTarget();
 }
 
-bool ABIInfo:: isAndroid() const { return getTarget().getTriple().isAndroid(); }
+const CodeGenOptions &ABIInfo::getCodeGenOpts() const {
+  return CGT.getCodeGenOpts();
+}
+
+bool ABIInfo::isAndroid() const { return getTarget().getTriple().isAndroid(); }
 
 bool ABIInfo::isHomogeneousAggregateBaseType(QualType Ty) const {
   return false;
@@ -416,12 +420,32 @@ llvm::Constant *TargetCodeGenInfo::getNullPointer(const CodeGen::CodeGenModule &
   return llvm::ConstantPointerNull::get(T);
 }
 
+unsigned TargetCodeGenInfo::getGlobalVarAddressSpace(CodeGenModule &CGM,
+                                                     const VarDecl *D) const {
+  assert(!CGM.getLangOpts().OpenCL &&
+         !(CGM.getLangOpts().CUDA && CGM.getLangOpts().CUDAIsDevice) &&
+         "Address space agnostic languages only");
+  return D ? D->getType().getAddressSpace()
+           : static_cast<unsigned>(LangAS::Default);
+}
+
 llvm::Value *TargetCodeGenInfo::performAddrSpaceCast(
     CodeGen::CodeGenFunction &CGF, llvm::Value *Src, unsigned SrcAddr,
     unsigned DestAddr, llvm::Type *DestTy, bool isNonNull) const {
   // Since target may map different address spaces in AST to the same address
   // space, an address space conversion may end up as a bitcast.
+  if (auto *C = dyn_cast<llvm::Constant>(Src))
+    return performAddrSpaceCast(CGF.CGM, C, SrcAddr, DestAddr, DestTy);
   return CGF.Builder.CreatePointerBitCastOrAddrSpaceCast(Src, DestTy);
+}
+
+llvm::Constant *
+TargetCodeGenInfo::performAddrSpaceCast(CodeGenModule &CGM, llvm::Constant *Src,
+                                        unsigned SrcAddr, unsigned DestAddr,
+                                        llvm::Type *DestTy) const {
+  // Since target may map different address spaces in AST to the same address
+  // space, an address space conversion may end up as a bitcast.
+  return llvm::ConstantExpr::getPointerCast(Src, DestTy);
 }
 
 static bool isEmptyRecord(ASTContext &Context, QualType T, bool AllowArrays);
@@ -2075,9 +2099,14 @@ class X86_64ABIInfo : public SwiftABIInfo {
     return !getTarget().getTriple().isOSDarwin();
   }
 
-  /// GCC classifies <1 x long long> as SSE but compatibility with older clang
-  // compilers require us to classify it as INTEGER.
+  /// GCC classifies <1 x long long> as SSE but some platform ABIs choose to
+  /// classify it as INTEGER (for compatibility with older clang compilers).
   bool classifyIntegerMMXAsSSE() const {
+    // Clang <= 3.8 did not do this.
+    if (getCodeGenOpts().getClangABICompat() <=
+        CodeGenOptions::ClangABI::Ver3_8)
+      return false;
+
     const llvm::Triple &Triple = getTarget().getTriple();
     if (Triple.isOSDarwin() || Triple.getOS() == llvm::Triple::PS4)
       return false;
@@ -4765,7 +4794,8 @@ class AArch64ABIInfo : public SwiftABIInfo {
 public:
   enum ABIKind {
     AAPCS = 0,
-    DarwinPCS
+    DarwinPCS,
+    Win64
   };
 
 private:
@@ -4803,9 +4833,13 @@ private:
 
   Address EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
                     QualType Ty) const override {
-    return isDarwinPCS() ? EmitDarwinVAArg(VAListAddr, Ty, CGF)
-                         : EmitAAPCSVAArg(VAListAddr, Ty, CGF);
+    return Kind == Win64 ? EmitMSVAArg(CGF, VAListAddr, Ty)
+                         : isDarwinPCS() ? EmitDarwinVAArg(VAListAddr, Ty, CGF)
+                                         : EmitAAPCSVAArg(VAListAddr, Ty, CGF);
   }
+
+  Address EmitMSVAArg(CodeGenFunction &CGF, Address VAListAddr,
+                      QualType Ty) const override;
 
   bool shouldPassIndirectlyForSwift(CharUnits totalSize,
                                     ArrayRef<llvm::Type*> scalars,
@@ -5312,6 +5346,14 @@ Address AArch64ABIInfo::EmitDarwinVAArg(Address VAListAddr, QualType Ty,
                           TyInfo, SlotSize, /*AllowHigherAlign*/ true);
 }
 
+Address AArch64ABIInfo::EmitMSVAArg(CodeGenFunction &CGF, Address VAListAddr,
+                                    QualType Ty) const {
+  return emitVoidPtrVAArg(CGF, VAListAddr, Ty, /*indirect*/ false,
+                          CGF.getContext().getTypeInfoInChars(Ty),
+                          CharUnits::fromQuantity(8),
+                          /*allowHigherAlign*/ false);
+}
+
 //===----------------------------------------------------------------------===//
 // ARM ABI Implementation
 //===----------------------------------------------------------------------===//
@@ -5540,17 +5582,14 @@ void ARMABIInfo::setCCs() {
   // AAPCS apparently requires runtime support functions to be soft-float, but
   // that's almost certainly for historic reasons (Thumb1 not supporting VFP
   // most likely). It's more convenient for AAPCS16_VFP to be hard-float.
-  switch (getABIKind()) {
-  case APCS:
-  case AAPCS16_VFP:
-    if (abiCC != getLLVMDefaultCC())
+
+  // The Run-time ABI for the ARM Architecture section 4.1.2 requires
+  // AEABI-complying FP helper functions to use the base AAPCS.
+  // These AEABI functions are expanded in the ARM llvm backend, all the builtin
+  // support functions emitted by clang such as the _Complex helpers follow the
+  // abiCC.
+  if (abiCC != getLLVMDefaultCC())
       BuiltinCC = abiCC;
-    break;
-  case AAPCS:
-  case AAPCS_VFP:
-    BuiltinCC = llvm::CallingConv::ARM_AAPCS;
-    break;
-  }
 }
 
 ABIArgInfo ARMABIInfo::classifyArgumentType(QualType Ty,
@@ -6721,14 +6760,6 @@ MipsABIInfo::classifyArgumentType(QualType Ty, uint64_t &Offset) const {
       return getNaturalAlignIndirect(Ty, RAA == CGCXXABI::RAA_DirectInMemory);
     }
 
-    // Use indirect if the aggregate cannot fit into registers for
-    // passing arguments according to the ABI
-    unsigned Threshold = IsO32 ? 16 : 64;
-
-    if(getContext().getTypeSizeInChars(Ty) > CharUnits::fromQuantity(Threshold))
-      return ABIArgInfo::getIndirect(CharUnits::fromQuantity(Align), true,
-                                     getContext().getTypeAlign(Ty) / 8 > Align);
-
     // If we have reached here, aggregates are passed directly by coercing to
     // another structure type. Padding is inserted if the offset of the
     // aggregate is unaligned.
@@ -7325,6 +7356,8 @@ public:
     return LangAS::FirstTargetAddressSpace +
            getABIInfo().getDataLayout().getAllocaAddrSpace();
   }
+  unsigned getGlobalVarAddressSpace(CodeGenModule &CGM,
+                                    const VarDecl *D) const override;
 };
 }
 
@@ -7406,6 +7439,31 @@ llvm::Constant *AMDGPUTargetCodeGenInfo::getNullPointer(
       Ctx.getTargetAddressSpace(LangAS::opencl_generic));
   return llvm::ConstantExpr::getAddrSpaceCast(
       llvm::ConstantPointerNull::get(NPT), PT);
+}
+
+unsigned
+AMDGPUTargetCodeGenInfo::getGlobalVarAddressSpace(CodeGenModule &CGM,
+                                                  const VarDecl *D) const {
+  assert(!CGM.getLangOpts().OpenCL &&
+         !(CGM.getLangOpts().CUDA && CGM.getLangOpts().CUDAIsDevice) &&
+         "Address space agnostic languages only");
+  unsigned DefaultGlobalAS =
+      LangAS::FirstTargetAddressSpace +
+      CGM.getContext().getTargetAddressSpace(LangAS::opencl_global);
+  if (!D)
+    return DefaultGlobalAS;
+
+  unsigned AddrSpace = D->getType().getAddressSpace();
+  assert(AddrSpace == LangAS::Default ||
+         AddrSpace >= LangAS::FirstTargetAddressSpace);
+  if (AddrSpace != LangAS::Default)
+    return AddrSpace;
+
+  if (CGM.isTypeConstant(D->getType(), false)) {
+    if (auto ConstAS = CGM.getTarget().getConstantAddressSpace())
+      return ConstAS.getValue();
+  }
+  return DefaultGlobalAS;
 }
 
 //===----------------------------------------------------------------------===//
@@ -8447,6 +8505,8 @@ const TargetCodeGenInfo &CodeGenModule::getTargetCodeGenInfo() {
     AArch64ABIInfo::ABIKind Kind = AArch64ABIInfo::AAPCS;
     if (getTarget().getABI() == "darwinpcs")
       Kind = AArch64ABIInfo::DarwinPCS;
+    else if (Triple.isOSWindows())
+      Kind = AArch64ABIInfo::Win64;
 
     return SetCGInfo(new AArch64TargetCodeGenInfo(Types, Kind));
   }

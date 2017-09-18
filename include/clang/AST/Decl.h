@@ -1666,8 +1666,7 @@ private:
   unsigned HasSkippedBody : 1;
 
   /// Indicates if the function declaration will have a body, once we're done
-  /// parsing it.  (We don't set it to false when we're done parsing, in the
-  /// hopes this is simpler.)
+  /// parsing it.
   unsigned WillHaveBody : 1;
 
   /// \brief End part of this FunctionDecl's source range.
@@ -2019,7 +2018,10 @@ public:
   /// These functions have special behavior under C++1y [expr.new]:
   ///    An implementation is allowed to omit a call to a replaceable global
   ///    allocation function. [...]
-  bool isReplaceableGlobalAllocationFunction() const;
+  ///
+  /// If this function is an aligned allocation/deallocation function, return
+  /// true through IsAligned.
+  bool isReplaceableGlobalAllocationFunction(bool *IsAligned = nullptr) const;
 
   /// Compute the language linkage.
   LanguageLinkage getLanguageLinkage() const;
