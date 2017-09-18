@@ -260,6 +260,9 @@ void ExecuteCI(std::string platform, frontend::IncludeDirGroup Group, CustomDiag
   //setting up the diagnostic client to our custom one.
   Clang->getDiagnostics().setClient(new CustomDiagConsumer(DiagContainer), true);
 
+  //setting error limit to unlimited (0)
+  Clang->getDiagnostics().setErrorLimit(0);
+
   // Execute the frontend actions.
   Success = ExecuteCompilerInvocation(Clang.get());
 

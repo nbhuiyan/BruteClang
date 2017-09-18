@@ -21,8 +21,10 @@ void CustomDiagConsumer::HandleDiagnostic(DiagnosticsEngine::Level DiagLevel, co
   Info.FormatDiagnostic(message_SmallVector); //format the diagnostic message into the message buffer
   std::string message(message_SmallVector.begin(), message_SmallVector.end()); //convert the llvm::SmallVector buffer to a std::string obj
   
-  unsigned ColumnNumber = Info.getSourceManager().getSpellingColumnNumber(Info.getLocation());
   unsigned LineNumber = Info.getSourceManager().getSpellingLineNumber(Info.getLocation());
+  //get column number using PresumedLocation
+
+  unsigned ColumnNumber = Info.getSourceManager().getPresumedColumnNumber(Info.getLocation());
   
   llvm::StringRef FileName_StringRef = Info.getSourceManager().getFilename(Info.getLocation());
   std::string FileName(FileName_StringRef.begin(), FileName_StringRef.end()); //file name as std::string
