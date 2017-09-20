@@ -146,6 +146,10 @@ public:
                              const char* const *ArgEnd,
                              DiagnosticsEngine &Diags);
 
+
+  // public function to assign macro def to compiler invocation
+  static void AssignMacroDef(CompilerInvocation &CI, llvm::StringRef str);
+
   /// \brief Get the directory where the compiler headers
   /// reside, relative to the compiler binary (found by the passed in
   /// arguments).

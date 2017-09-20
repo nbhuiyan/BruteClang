@@ -2610,6 +2610,12 @@ static void ParseTargetArgs(TargetOptions &Opts, ArgList &Args,
   Opts.OpenCLExtensionsAsWritten = Args.getAllArgValues(OPT_cl_ext_EQ);
 }
 
+//assigns macro def to compiler invocations which can
+//be accessed from cc1_main(). Used in BruteClang implementation.
+void CompilerInvocation::AssignMacroDef(CompilerInvocation &CI, llvm::StringRef str){
+  CI.getPreprocessorOpts().addMacroDef(str);
+}
+
 bool CompilerInvocation::CreateFromArgs(CompilerInvocation &Res,
                                         const char *const *ArgBegin,
                                         const char *const *ArgEnd,
