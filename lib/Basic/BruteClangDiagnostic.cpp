@@ -88,13 +88,12 @@ void CustomDiagContainer::AddDiagnostic(std::string &FileName, unsigned ColumnNu
 void CustomDiagContainer::PrintDiagnostics(){ //TODO: Multiple structs case not handled yet
   unsigned NumStructs = DiagList.size();
   if (NumStructs == 0){
-    llvm::outs() << "No compiler instance reported any errors!\n";
+    llvm::outs() << "No build variant reported any errors!\n";
   }
   else{
     for (std::list<DiagData>::iterator it = DiagList.begin(); it != DiagList.end(); it++){
-      llvm::errs() << it->CI_Names << ":\n";
-      llvm::errs() << it->FileName << ":" << it->LineNumber << ":" << it->ColumnNumber <<
-      " error: " << it->msg << "\n";
+      llvm::errs() << it->CI_Names << ":\n In file ";
+      llvm::errs() << it->FileName << ": Line " << it->LineNumber << ":" << " error: " << it->msg << "\n";
     }
   }
     
