@@ -19,13 +19,13 @@ class CustomDiagContainer{
     std::list<DiagData> DiagList;
 
     //this function checks if the line number and diag message combination already exists
-    bool DiagExists(std::string &message, unsigned line);
+    bool DiagExists(std::string &message, unsigned line, std::string &file);
 
     //if a diagnostic message and line number combination does not already exist, create a new one.
     void AddNewDiagData(std::string &FileName, unsigned ColumnNumber, unsigned LineNumber, std::string &message);
 
     //if a diagnostic message and line number combination exists, then add to the existing corresponding struct.
-    void AddToExistingDiagData(std::string &message, unsigned line);
+    void AddToExistingDiagData(std::string &message, unsigned line, std::string &file);
 
 
   public:
