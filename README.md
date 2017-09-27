@@ -21,9 +21,12 @@ Here is what is needed to run BruteClang on all files:
 * A set of config files for BruteClang to read the `-I`s and `-D`s for different platforms
 
 [__The Script__](https://github.com/nbhuiyan/public-files/blob/master/BruteClang-files/run_BruteClang.py)  
-The script works similarly to the linter, executing BruteClang on all files available in a file list. The file containing the list of files to run BruteClang on is set to `all_files.config`. It can be changed by modifying line 15 of the script.
+The script works similarly to the linter, executing BruteClang on all files available in a file list. Unlike the linter,  The file containing the list of files to run BruteClang on is set to `all_files.config`. It can be changed by modifying line 15 of the script.
 
-Lines 
+Line 9 specifies the name of the plugin in Clang's plugin registry (omr-checker in this case). Lines 6 and 12 specify where the the clang executables and the plugin's shared library are located.
+
+[__Config files containing list of files for each platform__](https://github.com/nbhuiyan/public-files/tree/master/file-config)  
+These config files contain the list of files that are relevant to each platform. If it is in [`common_files.config`](https://github.com/nbhuiyan/public-files/blob/master/file-config/common_files.config), 
 
 A script calls BruteClang on the list of all the files to be analyzed one by one. Suppose the first file the script executes BruteClang with OMRChecker plguin loaded is called `Random.cpp`.
 ![](https://github.com/nbhuiyan/public-files/blob/master/BruteClang-images/BruteClang%20files%20search%20and%20execution.png)
