@@ -88,7 +88,7 @@ void CustomDiagContainer::AddDiagnostic(std::string &FileName, unsigned ColumnNu
 void CustomDiagContainer::PrintDiagnostics(){ //TODO: Multiple structs case not handled yet
   unsigned NumStructs = DiagList.size();
   if (NumStructs == 0){
-    llvm::outs() << "No build variant reported any errors!\n";
+    llvm::outs() << "No errors reported!\n";
   }
   else{
     for (std::list<DiagData>::iterator it = DiagList.begin(); it != DiagList.end(); it++){

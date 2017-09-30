@@ -313,11 +313,14 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
     ExecuteCI("z", Group, DiagContainer, Argv, Argv0, MainAddr);
   }
   else{
-    llvm::errs() << "Unknown file. Please check the file lists.\n";
+    llvm::errs() << "Unknown file. Please ensure the file exists in one of the file lists.\n";
     return 0;
   }
 
   DiagContainer.PrintDiagnostics();
+  //tryting to separate current diagnostic info from the next execution
+  llvm::outs() << "------------------------------------------------------\n";
+  llvm::outs() << "\n";
 
   return 0;
 }
