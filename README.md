@@ -1,3 +1,5 @@
+## This readme file is not complete yet
+
 # BruteClang
 
 BruteClang is a modified implementation of Clang, based on Clang release_50, and LLVM release_50. BruteClang's primary purpose is to analyze multiple variants of a project simultaneously and report errors, if there are any, and specify in which variant the error was reported.
@@ -15,15 +17,20 @@ BruteClang is not just designed to work with OMRChecker. Any Clang plug-in that 
 Beside the purpose described above, BruteClang will serve the purpose of being the baseline in our effort to build a complete variability-aware analysis tool for C++, where we aim to leverage sharing of common code across multiple variants and prevent repeated analysis of the same code. 
 
 # How BruteClang works
-Here is what is needed to run BruteClang on all files:
+Here is what is needed to use BruteClang:
 * A script that calls BruteClang on all files in a file list
 * A set of config files for BruteClang to determine what platform it needs to analyze a file, and what the arguments are
 * A set of config files for BruteClang to read the `-I`s and `-D`s for different platforms
 
-[__The Script__](https://github.com/nbhuiyan/public-files/blob/master/BruteClang-files/run_BruteClang.py)  
-The script works similarly to the linter, executing BruteClang on all files available in a file list. The file containing the list of files to run BruteClang on is set to `all_files.config`. It can be changed by modifying line 15 of the script.
+[___The Script___](https://github.com/nbhuiyan/public-files/blob/master/BruteClang-files/run_BruteClang.py)  
+The script works similarly to the linter, executing BruteClang on all files available in a file list. Unlike the linter,  The file containing the list of files to run BruteClang on is set to `all_files.config`. It can be changed by modifying line 15 of the script.
 
-Lines 
+Line 9 specifies the name of the plugin in Clang's plugin registry (omr-checker in this case). Lines 6 and 12 specify where the the clang executables and the plugin's shared library are located.
+
+[___Config files containing list of files for each platform___](https://github.com/nbhuiyan/public-files/tree/master/file-config)  
+These config files contain the list of files that are relevant to each platform. If a file is in [`common_files.config`](https://github.com/nbhuiyan/public-files/blob/master/file-config/common_files.config), then BruteClang will execute that file for all platforms. If a file is present in [`x_files.config`](https://github.com/nbhuiyan/public-files/blob/master/file-config/x_files.config), then the file will be tested for `amd64` and `i386` platforms. If a file is in `amd64_files.config`, then the file will be tested for just `amd64` platform, and so on.
+
+[___Config files containing the set of arguments___](https://github.com/nbhuiyan/public-files/tree/master/arg-config)
 
 A script calls BruteClang on the list of all the files to be analyzed one by one. Suppose the first file the script executes BruteClang with OMRChecker plguin loaded is called `Random.cpp`.
 ![](https://github.com/nbhuiyan/public-files/blob/master/BruteClang-images/BruteClang%20files%20search%20and%20execution.png)
@@ -37,7 +44,7 @@ Next, BruteClang will copy the execution instance to multiple execution instance
 
 Now that it is done, the script will call BruteClang with OMRChecker plugin loaded on the next file on the list, and the process continues until the last file is done. 
 
-# How to build BruteClang and test Eclipse OMR's Compiler Component
+# How to build BruteClang and replicate Eclipse OMR's compiler test (the hard way)
 I am going to assume you are using a 64-bit Linux-based machine. This guide is meant to replace the linter in fvtest/compilertest.
 
 First, let's set up BruteClang. Make a directory to contain the llvm and clang source code, as well as the build files. Let's called it `BruteClang`. Navigate into llvm-forked.
