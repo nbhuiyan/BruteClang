@@ -417,7 +417,11 @@ The logic above is pretty simple. You can play around with it and build your own
 
 # Prebuilt BruteClang
 
-Using CPack, we built both .deb and tar.gz packages of BruteClang that works with Ubuntu. A built BruteClang is available in [this](https://github.com/nbhuiyan/BruteClang-binaries) repository. It also contains a built OMRChecker.so library. Download the config files and the script, follow the instructions in the previous sections, and you should be able to test BruteClang out without wasting time building it.
+Using CPack, we built both .deb and tar.gz packages of BruteClang that works with Ubuntu. A built BruteClang is available in [this](https://github.com/nbhuiyan/BruteClang-binaries) repository. It also contains a built `OMRChecker.so` shared lib in the lib/ directory. You can obtain all of the build files by simply cloning the repository:
+```plaintext
+git clone https://github.com/nbhuiyan/BruteClang-binaries.git
+```
+Download the config files and the script, follow the instructions in the previous sections, and you should be able to test BruteClang out without wasting time building it.
 
 # Known issues and future improvements
 * In the diagnostic reporting stage, the column number is currently not available. We will add that in a future update.
