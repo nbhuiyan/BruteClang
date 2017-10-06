@@ -294,7 +294,7 @@ ninja
 
 Once LLVM and Clang has been built, it is time to build OMRChecker. I have already included a modified version of OMRChecker that works with Clang release in `clang/examples/OMRChecker`. Within the `build` directory, run the following command:
 ```plaintext
-make OMRChecker
+ninja OMRChecker
 ```
 This will create the shared library `OMRChecker.so` and store it in `build/lib`. Now that everything is setup, it is time to checkout the OMR project. Checkout OMR in a directory called `omr-master`, independent of where LLVM and Clang were built.
 ```plaintext
