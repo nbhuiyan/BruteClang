@@ -82,7 +82,7 @@ In our experience, this is perhaps the worst way to build LLVM and Clang, althou
 
 This method of building takes around 2 hours on 2 desktops we attempted to build it in. The first desktop was powered by a 4 core, 8 thread Intel Core i7-7700, and the second desktop was powered by a 6-core, 12 thread AMD Ryzen 5 1600X. Both desktops had 16 GB of DDR4 RAM, and used SSDs. If you do not have a lot of patience and want to build in a shorter period of time (using the experiemental ninja-build system), do not build BruteClang using the instructions in this section. However, reading through this section will give you a better understanding of how BruteClang works without going too deep into the build parameters we will have to alter to speed up the build process. In the next section we will talk about how to configure Ninja and CMake build parameters to speed up the build process. This section also includes a snippet of the output of executing BruteClang.
 
-We will assume that you are using a 64-bit Linux machine. First, let's set up BruteClang. Make a directory to contain the llvm and clang source code, as well as the build files. Let's called it `BruteClang`. Navigate into llvm-forked.
+We will assume that you are using a 64-bit Linux machine. First, let's set up BruteClang. Make a directory to contain the llvm and clang source code, as well as the build files. Let's called it `BruteClang`. Navigate into BruteClang.
 ```plaintext
 mkdir BruteClang && cd BruteClang
 ```
@@ -221,7 +221,7 @@ sudo apt-get install clang
 
 Now that everything is set, we can finally get to the real work.
 
-Make a directory to contain the llvm and clang source code, as well as the build files. Let's called it `BruteClang`. Navigate into llvm-forked.
+Make a directory to contain the llvm and clang source code, as well as the build files. Let's called it `BruteClang`. Navigate into BruteClang.
 ```plaintext
 mkdir BruteClang && cd BruteClang
 ```
