@@ -2034,6 +2034,12 @@ static void ParseTargetArgs(TargetOptions &Opts, ArgList &Args) {
     Opts.Triple = llvm::sys::getDefaultTargetTriple();
 }
 
+//assigns macro def to compiler invocations which can
+//be accessed from cc1_main(). Used in BruteClang implementation.
+void CompilerInvocation::AssignMacroDef(CompilerInvocation &CI, llvm::StringRef str){
+  CI.getPreprocessorOpts().addMacroDef(str);
+}
+
 bool CompilerInvocation::CreateFromArgs(CompilerInvocation &Res,
                                         const char *const *ArgBegin,
                                         const char *const *ArgEnd,

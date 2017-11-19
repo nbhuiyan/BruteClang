@@ -60,6 +60,7 @@ add_clang_library(clangBasic
   Builtins.cpp
   CharInfo.cpp
   Diagnostic.cpp
+  BruteClangDiagnostic.cpp
   DiagnosticIDs.cpp
   DiagnosticOptions.cpp
   FileManager.cpp

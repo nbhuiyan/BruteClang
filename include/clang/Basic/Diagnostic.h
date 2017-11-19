@@ -25,6 +25,7 @@
 #include "llvm/ADT/iterator_range.h"
 #include <list>
 #include <vector>
+#include <set>
 
 namespace clang {
   class DeclContext;
