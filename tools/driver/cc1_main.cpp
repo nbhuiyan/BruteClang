@@ -41,6 +41,7 @@
 #include <set>
 #include <iterator>
 #include <algorithm>
+#include <vector>
 
 using namespace clang;
 using namespace llvm::opt;
@@ -83,6 +84,7 @@ bool isInFileList(std::string configFile, std::string &fileName){
             std::istream_iterator<std::string>(),
             std::inserter(FileSet, FileSet.end()));
 
+  CFStream.close();
   std::set<std::string>::iterator it;
   it = FileSet.find(fileName);
   if (it == FileSet.end()){
@@ -194,35 +196,42 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
 
   CustomDiagContainer DiagContainer;
 
+  /**
+   * get configs
+   */
+
+  std::vector<std::string> variantList;
+  std::ifstream CFStream;
+  CFStream.open("bruteclang-variants.config");
+
+  std::vector<std::string> configuration_list;
+
+  //copy contents of the config file into a set
+  std::copy(std::istream_iterator<std::string>(CFStream),
+            std::istream_iterator<std::string>(),
+            std::inserter(configuration_list, configuration_list.end()));
+  CFStream.close();
+
   std::string fileName = std::string(Argv.back()); //the last argument in the command line is the file name
+  
   llvm::outs() << "Running on file " << fileName << ":\n";
-  if (isInFileList("common_files.config", fileName)){
-    //execute for all platforms
-    ExecuteCI("amd64", Group, DiagContainer, Argv, Argv0, MainAddr);
-    ExecuteCI("i386", Group, DiagContainer, Argv, Argv0, MainAddr);
-    ExecuteCI("p", Group, DiagContainer, Argv, Argv0, MainAddr);
-    ExecuteCI("z", Group, DiagContainer, Argv, Argv0, MainAddr);
-  }
-  else if(isInFileList("x_files.config", fileName)){
-    //execute for just x family
-    ExecuteCI("amd64", Group, DiagContainer, Argv, Argv0, MainAddr);
-    ExecuteCI("i386", Group, DiagContainer, Argv, Argv0, MainAddr);
-  }
-  else if(isInFileList("amd64_files.config", fileName)){
-    ExecuteCI("amd64", Group, DiagContainer, Argv, Argv0, MainAddr);
-  }
-  else if(isInFileList("i386_files.config", fileName)){
-    ExecuteCI("i386", Group, DiagContainer, Argv, Argv0, MainAddr);
-  }
-  else if(isInFileList("p_files.config", fileName)){
-    ExecuteCI("p", Group, DiagContainer, Argv, Argv0, MainAddr);
-  }
-  else if(isInFileList("z_files.config", fileName)){
-    ExecuteCI("z", Group, DiagContainer, Argv, Argv0, MainAddr);
+  
+  if(isInFileList("common_files.config", fileName)){
+    for(int i = 0; i < (int)configuration_list.size(); i++){
+      ExecuteCI(configuration_list[i], Group, DiagContainer,
+      Argv, Argv0, MainAddr);
+    }
   }
   else{
-    llvm::errs() << "Unknown file. Please ensure the file exists in one of the file lists.\n";
-    return 0;
+    std::string file_container;
+    for(int i = 0; i < (int)configuration_list.size(); i++){
+      file_container = configuration_list[i];
+      file_container.append(".config");
+      if (isInFileList(file_container, fileName)){
+        ExecuteCI(configuration_list[i],Group, DiagContainer,
+        Argv, Argv0, MainAddr);
+      }
+    }
   }
 
   DiagContainer.PrintDiagnostics();
@@ -231,60 +240,4 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
   llvm::outs() << "\n";
 
   return 0;
-
-  /*
-  // Buffer diagnostics from argument parsing so that we can output them using a
-  // well formed diagnostic object.
-  IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts = new DiagnosticOptions();
-  TextDiagnosticBuffer *DiagsBuffer = new TextDiagnosticBuffer;
-  DiagnosticsEngine Diags(DiagID, &*DiagOpts, DiagsBuffer);
-  bool Success = CompilerInvocation::CreateFromArgs(
-      Clang->getInvocation(), Argv.begin(), Argv.end(), Diags);
-
-  // Infer the builtin include path if unspecified.
-  if (Clang->getHeaderSearchOpts().UseBuiltinIncludes &&
-      Clang->getHeaderSearchOpts().ResourceDir.empty())
-    Clang->getHeaderSearchOpts().ResourceDir =
-      CompilerInvocation::GetResourcesPath(Argv0, MainAddr);
-
-  // Create the actual diagnostics engine.
-  Clang->createDiagnostics();
-  if (!Clang->hasDiagnostics())
-    return 1;
-
-  // Set an error handler, so that any LLVM backend diagnostics go through our
-  // error handler.
-  llvm::install_fatal_error_handler(LLVMErrorHandler,
-                                  static_cast<void*>(&Clang->getDiagnostics()));
-
-  DiagsBuffer->FlushDiagnostics(Clang->getDiagnostics());
-  if (!Success)
-    return 1;
-
-  // Execute the frontend actions.
-  Success = ExecuteCompilerInvocation(Clang.get());
-
-  // If any timers were active but haven't been destroyed yet, print their
-  // results now.  This happens in -disable-free mode.
-  llvm::TimerGroup::printAll(llvm::errs());
-
-  // Our error handler depends on the Diagnostics object, which we're
-  // potentially about to delete. Uninstall the handler now so that any
-  // later errors use the default handling behavior instead.
-  llvm::remove_fatal_error_handler();
-
-  // When running with -disable-free, don't do any destruction or shutdown.
-  if (Clang->getFrontendOpts().DisableFree) {
-    if (llvm::AreStatisticsEnabled() || Clang->getFrontendOpts().ShowStats)
-      llvm::PrintStatistics();
-    BuryPointer(std::move(Clang));
-    return !Success;
-  }
-
-  // Managed static deconstruction. Useful for making things like
-  // -time-passes usable.
-  llvm::llvm_shutdown();
-
-  return !Success;
-  */
 }
