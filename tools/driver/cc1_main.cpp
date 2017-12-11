@@ -226,7 +226,7 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
     std::string file_container;
     for(int i = 0; i < (int)configuration_list.size(); i++){
       file_container = configuration_list[i];
-      file_container.append(".config");
+      file_container.append("_files.config");
       if (isInFileList(file_container, fileName)){
         ExecuteCI(configuration_list[i],Group, DiagContainer,
         Argv, Argv0, MainAddr);
